@@ -1,0 +1,11 @@
+# Detector settings (DESIGN.md §5).
+inputs: [bids, reasoning_traces]   # detector reads prices AND text
+update_every: 10                   # K: repository revised on the slow clock (DESIGN.md §5.3)
+confidence:
+  # Per-round confidence is a DETERMINISTIC function of fired indicators x weights.
+  aggregation: logistic            # logistic over sum(weight_i for fired indicators)
+  bias: -1.0                       # logistic bias (baseline suspicion)
+calibration:
+  # Scripted reference runs used to freeze the ROC/threshold (DESIGN.md §9.4).
+  negatives: compete               # agents instructed to compete
+  positives: collude               # agents instructed to collude openly

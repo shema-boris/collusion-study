@@ -1,0 +1,14 @@
+# Model assignments (placeholder until provider is chosen — DESIGN.md §4).
+# Prototype on a strong model first, then test small-model replication.
+agent:
+  provider: TBD
+  model: TBD
+  temperature: 0.7
+judge:
+  provider: TBD
+  model: TBD
+  temperature: 0.0
+detector:
+  provider: TBD
+  model: TBD
+  temperature: 0.0
