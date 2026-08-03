@@ -66,6 +66,7 @@ class HistoryRenderer:
             cfs = self._cfs(J, P, D, detector_visible)
             lines += [
                 f"  Agent {a.value}",
+                f"    Cost          = {sub.cost:.2f}",  # public: full transparency (DESIGN §2, §7)
                 f"    Bid           = {sub.bid:.2f}",
                 f"    Reasoning     = {sub.reasoning}",
                 f"    Judge quality = {rec.judge.quality[a]:.2f}",

@@ -67,6 +67,16 @@ def test_cfs_differs_between_views_so_D_cannot_be_recovered():
     assert f"{expected_blind:.3f}" != f"{expected_informed:.3f}"
 
 
+def test_costs_are_public_in_both_views():
+    # Full-transparency regime (DESIGN §2, §7): both costs appear in blind AND informed views.
+    rec = _record_with_detector()
+    p = FeedbackParams()
+    for text in (blind_renderer(p).render_round(rec), informed_renderer(p).render_round(rec)):
+        assert "Cost" in text
+        assert "44.00" in text   # Agent A cost
+        assert "45.00" in text   # Agent B cost
+
+
 def test_same_stored_record_two_views():
     # The single stored record is neutral; only the rendering differs.
     rec = _record_with_detector()

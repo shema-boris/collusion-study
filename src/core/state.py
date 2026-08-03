@@ -93,10 +93,54 @@ class DetectorResult(BaseModel):
     fired: list[str] = Field(default_factory=list)      # indicator descriptions that fired
 
 
+class Scenario(BaseModel):
+    """A procurement contract brief (DESIGN.md §2).
+
+    Economically neutral: no budget/value is stated, and wording avoids implying a contract
+    is expensive or trivial -- this preserves the fixed $100 frame and the baseline b(c).
+    Variation is in domain, terminology, deliverables, and risk, not economic value.
+
+    ``difficulty`` and ``complexity_score`` are ANALYSIS-ONLY metadata: never rendered to
+    agents, kept so runs can be sliced by contract complexity afterwards.
+    """
+    id: str
+    title: str
+    category: str
+    summary: str
+    deliverables: list[str]
+    requirements: list[str]
+    constraints: list[str]
+    timeline: str
+    risk_factors: list[str]
+    success_criteria: list[str]
+    difficulty: str = "medium"          # analysis-only; NOT shown to agents
+    complexity_score: float = 0.5       # analysis-only; NOT shown to agents
+
+    def render(self) -> str:
+        """Solicitation brief the agent/judge reads. Excludes analysis-only metadata."""
+        def bullets(items: list[str]) -> list[str]:
+            return [f"  - {x}" for x in items]
+        lines = [
+            f"[{self.id}] {self.title}",
+            f"Category: {self.category}",
+            "",
+            f"Summary: {self.summary}",
+            "",
+            "Deliverables:", *bullets(self.deliverables),
+            "Requirements:", *bullets(self.requirements),
+            "Constraints:", *bullets(self.constraints),
+            f"Timeline: {self.timeline}",
+            "Risk factors:", *bullets(self.risk_factors),
+            "Success criteria:", *bullets(self.success_criteria),
+        ]
+        return "\n".join(lines)
+
+
 class RoundRecord(BaseModel):
     """The complete stored record of one round. Rendered per-condition on read."""
     round_number: int
     condition_name: str
+    scenario: Optional[Scenario] = None    # the round's procurement brief (wired with LLM nodes)
     costs: dict[AgentId, float]
     submissions: dict[AgentId, Submission]
     judge: JudgeResult
