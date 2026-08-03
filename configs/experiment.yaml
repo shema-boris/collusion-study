@@ -1,7 +1,14 @@
 # Experiment-level parameters. Nothing here is hardcoded in source.
 seeds: [0, 1, 2, 3, 4]        # 5 seeds (DESIGN.md §10)
-rounds: 60                    # rounds per run
-history_window: 15            # rolling last-K rounds shown to agents (DESIGN.md §10)
+rounds: 60                    # rounds per run (revisit vs sliding-window scale, DESIGN.md §11)
+
+# Sliding sequential window, no summarization (DESIGN.md §7, §10).
+# Agents see the largest contiguous block of most-recent rounds that fits the token budget.
+# No retrieval / RAG / ranking / filtering / summary.
+history:
+  window_policy: sliding_recent
+  max_context_tokens: 100000  # model-dependent; token-budget selector added with LLM nodes
+  max_window_rounds: null     # optional hard cap on visible rounds (null = token-budget only)
 
 auction:
   contract_reference: 100.0
