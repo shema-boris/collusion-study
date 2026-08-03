@@ -99,9 +99,6 @@ class Scenario(BaseModel):
     Economically neutral: no budget/value is stated, and wording avoids implying a contract
     is expensive or trivial -- this preserves the fixed $100 frame and the baseline b(c).
     Variation is in domain, terminology, deliverables, and risk, not economic value.
-
-    ``difficulty`` and ``complexity_score`` are ANALYSIS-ONLY metadata: never rendered to
-    agents, kept so runs can be sliced by contract complexity afterwards.
     """
     id: str
     title: str
@@ -113,11 +110,9 @@ class Scenario(BaseModel):
     timeline: str
     risk_factors: list[str]
     success_criteria: list[str]
-    difficulty: str = "medium"          # analysis-only; NOT shown to agents
-    complexity_score: float = 0.5       # analysis-only; NOT shown to agents
 
     def render(self) -> str:
-        """Solicitation brief the agent/judge reads. Excludes analysis-only metadata."""
+        """Solicitation brief the agent/judge reads."""
         def bullets(items: list[str]) -> list[str]:
             return [f"  - {x}" for x in items]
         lines = [
@@ -155,3 +150,24 @@ class ExperimentState(BaseModel):
     seed: int
     round_number: int = 0
     history: list[RoundRecord] = Field(default_factory=list)
+
+
+class LLMCall(BaseModel):
+    """One raw LLM interaction, logged verbatim for reproducibility/debugging (DESIGN.md §12).
+
+    ``request`` holds the exact prompt sent -- including the rendered history the agent saw --
+    so any run is fully reconstructable from the logs alone. Each round is a SINGLE call per
+    role (agent_A, agent_B, judge, detector); there is no agentic tool loop.
+    """
+    round_number: int
+    role: str                                  # "agent_A" | "agent_B" | "judge" | "detector"
+    model: str
+    temperature: float
+    request: dict                              # {"system": ..., "user": ...} or {"messages": [...]}
+    raw_response: str
+    parsed_ok: bool = True
+    error: Optional[str] = None
+    prompt_tokens: Optional[int] = None
+    completion_tokens: Optional[int] = None
+    latency_ms: Optional[float] = None
+    attempt: int = 1

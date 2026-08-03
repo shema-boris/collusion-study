@@ -29,8 +29,14 @@ form an adversarial arms race.
 - A **procurement scenario** (a textual contract brief) is presented to both agents. It gives
   the reasoning trace something concrete to be about, gives the judge a deliverable to score
   quality against, and provides the surface in which agents can later hide coordination signals
-  (the steganography endgame, §5.1). Scenarios are drawn by `(seed, round)` **only**, so the
-  scenario sequence is identical across conditions (same control property as costs, §10).
+  (the steganography endgame, §5.1). The scenario sequence is a **fixed, indexed dataset**:
+  round *N* → scenario *N*, deterministic, **no sampling / RNG / shuffling**. Each round gets a
+  **unique** contract (no repetition), so the bank must hold ≥ one scenario per round. Because
+  the mapping is deterministic, the scenario is held constant across **conditions *and* seeds** —
+  a fully-controlled factor, not a source of randomness (which is reserved for costs/tie-breaks).
+  Scenarios are **economically neutral** (no stated budget, no "expensive/trivial" wording) to
+  preserve the baseline `b(c)`. (Contract complexity, if needed for analysis, is computed from a
+  scenario's structure post-hoc, not stored in the files.)
 - A contract with reference value **$100** is offered (the fixed economic frame; the scenario
   supplies qualitative context, not its own economics — keeps the baseline `b(c)` comparable).
 - Each of two agents draws a cost `cᵢ ~ U[40, 60]`, **private at bidding time** (the stage is
@@ -296,4 +302,32 @@ Now "detector confidence dropped" is interpretable because the detector's true a
   and the answer to the "you gave them perfect monitoring" critique.
 - Run scale: the sliding-window examples imply hundreds-to-thousands of rounds; confirm the
   intended rounds-per-run and the resulting token budget against the 60-round default.
-- Scenario bank: source (fixed hand-written bank vs generated) and size.
+- Scenario bank: source (fixed hand-written bank vs generated) and size. *(Resolved: a
+  deterministically generated, committed 3000-brief bank — `scripts/generate_scenarios.py`.)*
+
+---
+
+## 12. Logging & run artifacts
+
+Everything a run produces is captured to **local, append-only, crash-safe** files — the
+canonical, reproducible record the analysis and paper depend on, independent of any external
+tracing/observability overlay (a LangSmith hook may be added later for *debugging* only, never
+as the system of record). Implemented in `history/storage.py` (`RunLogger`).
+
+Layout — one directory per run (condition × seed):
+
+```
+runs/<experiment>/<condition>__seed<seed>/
+  manifest.json    run metadata + live status/progress (condition, seed, models, config,
+                   git commit, created/updated timestamps, status, last_round)
+  rounds.jsonl     one RoundRecord per line — the append-only archive
+  llm_calls.jsonl  every LLM call: round, role, model, temperature, full prompt (incl. the
+                   rendered history the agent saw), raw response, tokens, latency, attempt,
+                   parse status
+  events.jsonl     lifecycle, warnings, parse failures, errors
+```
+
+Principles: **stream-and-flush** every write (a crash keeps all prior rounds); **resume by
+replaying `rounds.jsonl`** (`RunLogger.resume` → prior rounds rehydrate `ExperimentState`), not
+via any framework checkpoint; **raw data only** — no metrics computed at log time (§9). Each
+round logs exactly four LLM calls (agent_A, agent_B, judge, detector); there is no agentic loop.

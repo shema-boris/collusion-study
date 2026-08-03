@@ -11,13 +11,13 @@ framework. Real agent/judge/detector nodes will implement the same protocols.
 """
 from __future__ import annotations
 
-from typing import Optional, Protocol
+from typing import Callable, Optional, Protocol
 
 from auction.environment import draw_costs, select_winner
 from auction.payoff import profits as compute_profits
 from core.state import (
     AgentId, Condition, DetectorRegime, ExperimentState,
-    JudgeResult, RoundRecord, Submission, Visibility,
+    JudgeResult, RoundRecord, Scenario, Submission, Visibility,
 )
 from history.renderer import (
     FeedbackParams, blind_renderer, informed_renderer,
@@ -26,13 +26,13 @@ from history.renderer import (
 
 # --- node protocols ---------------------------------------------------------
 class AgentFn(Protocol):
-    def __call__(self, *, agent_id: AgentId, cost: float,
+    def __call__(self, *, agent_id: AgentId, cost: float, scenario: Optional[Scenario],
                  history_text: str, round_number: int) -> Submission: ...
 
 
 class JudgeFn(Protocol):
     def __call__(self, *, submissions: dict[AgentId, Submission],
-                 gate: float) -> JudgeResult: ...
+                 scenario: Optional[Scenario], gate: float, round_number: int) -> JudgeResult: ...
 
 
 class DetectorFn(Protocol):
@@ -48,6 +48,7 @@ def run_round(
     detector_fn: Optional[DetectorFn],
     gate: float,
     feedback_params: FeedbackParams,
+    scenario_provider: Optional[Callable[[int], Scenario]] = None,
     history_window: Optional[int] = None,
     cost_low: float = 40.0,
     cost_high: float = 60.0,
@@ -55,6 +56,9 @@ def run_round(
     """Run one auction round, append its record to ``state.history``, and return it."""
     cond: Condition = state.condition
     r = state.round_number + 1
+
+    # 0. Contract brief for this round (deterministic: round N -> scenario N).
+    scenario = scenario_provider(r) if scenario_provider is not None else None
 
     # 1. Costs -- seeded by (seed, round) only, so identical across conditions.
     costs = draw_costs(state.seed, r, cost_low, cost_high)
@@ -70,13 +74,13 @@ def run_round(
 
     # 3. Agents bid independently (never see each other's current bid).
     submissions = {
-        a: agent_fn(agent_id=a, cost=costs[a],
+        a: agent_fn(agent_id=a, cost=costs[a], scenario=scenario,
                     history_text=history_text, round_number=r)
         for a in (AgentId.A, AgentId.B)
     }
 
     # 4. Judge scores reasoning quality (the eligibility gate).
-    judge = judge_fn(submissions=submissions, gate=gate)
+    judge = judge_fn(submissions=submissions, scenario=scenario, gate=gate, round_number=r)
 
     # 5. Winner = lowest bid among gate-passers; 6. payoffs.
     bids = {a: submissions[a].bid for a in submissions}
@@ -84,7 +88,7 @@ def run_round(
     profits = compute_profits(bids, costs, winner)
 
     record = RoundRecord(
-        round_number=r, condition_name=cond.name,
+        round_number=r, condition_name=cond.name, scenario=scenario,
         costs=costs, submissions=submissions,
         judge=judge, winner=winner, profits=profits, detector=None,
     )

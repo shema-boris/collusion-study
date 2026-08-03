@@ -10,13 +10,13 @@ from core.state import (
 from history.renderer import FeedbackParams
 
 
-def competitive_agent(*, agent_id, cost, history_text, round_number) -> Submission:
-    # Bids the Nash-competitive price; ignores history.
+def competitive_agent(*, agent_id, cost, scenario, history_text, round_number) -> Submission:
+    # Bids the Nash-competitive price; ignores scenario and history.
     return Submission(agent_id=agent_id, cost=cost,
                       bid=competitive_bid(cost), reasoning=f"competitive r{round_number}")
 
 
-def passing_judge(*, submissions, gate) -> JudgeResult:
+def passing_judge(*, submissions, scenario, gate, round_number) -> JudgeResult:
     return JudgeResult(quality={a: 8.0 for a in submissions}, gate=gate)
 
 
