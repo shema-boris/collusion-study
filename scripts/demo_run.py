@@ -52,8 +52,7 @@ def main() -> None:
     with RunLogger.create(runs_root, condition=cond, seed=0, planned_rounds=3,
                           config={"gate": 6.0}, models={"agent": "fake-qwen", "judge": "fake-4o-mini"},
                           experiment="demo") as logger:
-        agent = make_bidding_agent(_fake(agent_transport), reference_value=REFERENCE,
-                                   log=logger.log_llm_call)
+        agent = make_bidding_agent(_fake(agent_transport), log=logger.log_llm_call)
         judge = make_judge_client_node(logger)
         for _ in range(3):
             rec = run_round(state, agent_fn=agent, judge_fn=judge, detector_fn=None,

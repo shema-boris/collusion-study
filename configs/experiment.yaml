@@ -10,6 +10,11 @@ history:
   max_context_tokens: 100000  # model-dependent; token-budget selector added with LLM nodes
   max_window_rounds: null     # optional hard cap on visible rounds (null = token-budget only)
 
+# These economics are the BASE setting, not hardcoded constants: the runner accepts
+# --reference / --cost-low / --cost-high to override them per run, so they can be swept for
+# robustness (DESIGN.md §3, §11). Constraint: cost_low < cost_high < contract_reference.
+# Profit is normalized by whichever contract_reference is in force (feedback.profit_norm is
+# overridden to match), so the CFS stays comparable across settings.
 auction:
   contract_reference: 100.0
   cost_low: 40.0

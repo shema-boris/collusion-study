@@ -57,11 +57,13 @@ class HistoryRenderer:
     def render_round(self, rec: RoundRecord) -> str:
         # Detector is visible only when this renderer shows it AND a detector ran.
         detector_visible = self.show_detector and rec.detector is not None
+        # Normalize profit by this round's reference (economics live on the scenario, §2).
+        profit_norm = rec.scenario.reference_value if rec.scenario is not None else self.p.profit_norm
         lines = [f"Round {rec.round_number}"]
         for a in (AgentId.A, AgentId.B):
             sub = rec.submissions[a]
             J = self._J(rec.judge.quality[a])
-            P = self._P(rec.profits.get(a, 0.0))
+            P = rec.profits.get(a, 0.0) / profit_norm
             D = rec.detector.confidence if rec.detector is not None else 0.0
             cfs = self._cfs(J, P, D, detector_visible)
             lines += [

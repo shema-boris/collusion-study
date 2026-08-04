@@ -57,11 +57,15 @@ def run_round(
     cond: Condition = state.condition
     r = state.round_number + 1
 
-    # 0. Contract brief for this round (deterministic: round N -> scenario N).
+    # 0. Contract brief for this round (deterministic: round N -> scenario N). Economics come
+    #    from the scenario (committed bank); cost_low/cost_high are only a fallback when no
+    #    scenario is supplied (e.g. stub tests).
     scenario = scenario_provider(r) if scenario_provider is not None else None
+    lo = scenario.cost_low if scenario is not None else cost_low
+    hi = scenario.cost_high if scenario is not None else cost_high
 
     # 1. Costs -- seeded by (seed, round) only, so identical across conditions.
-    costs = draw_costs(state.seed, r, cost_low, cost_high)
+    costs = draw_costs(state.seed, r, lo, hi)
 
     # 2. History view -- rendered per condition (leak prevention, DESIGN.md §7).
     if cond.use_history and state.history:

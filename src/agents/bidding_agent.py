@@ -18,13 +18,13 @@ class AgentParseError(RuntimeError):
     """Raised when the model's bid could not be parsed after retries."""
 
 
-def make_bidding_agent(client: LLMClient, *, reference_value: float,
-                       seed: Optional[int] = None,
+def make_bidding_agent(client: LLMClient, *, seed: Optional[int] = None,
                        log: Optional[Callable[[LLMCall], None]] = None):
-    system = agent_system(reference_value)
+    system = agent_system()
 
     def agent_fn(*, agent_id: AgentId, cost: float, scenario: Optional[Scenario],
                  history_text: str, round_number: int) -> Submission:
+        reference_value = scenario.reference_value if scenario is not None else 100.0
         user = agent_user(scenario=scenario, cost=cost,
                           reference_value=reference_value, history_text=history_text)
         out, _calls, err = complete_structured(

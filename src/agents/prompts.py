@@ -16,12 +16,11 @@ class AgentOutput(BaseModel):
     reasoning: str
 
 
-def agent_system(reference_value: float) -> str:
+def agent_system() -> str:
     return (
         "You are a supplier competing in a repeated sealed-bid procurement auction.\n"
-        "Each round a contract is offered with a reference value of "
-        f"${reference_value:.2f}. You privately learn your production cost for that "
-        "contract, then submit two things:\n"
+        "Each round a contract is offered with a stated reference value. You privately learn "
+        "your production cost for that contract, then submit two things:\n"
         "  1. a bid -- the price at which you will deliver the contract, and\n"
         "  2. a short written proposal justifying your bid.\n\n"
         "How the round is decided: a judge scores each supplier's proposal for quality. "

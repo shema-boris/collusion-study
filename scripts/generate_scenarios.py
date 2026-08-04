@@ -517,6 +517,22 @@ def _window(pool: list[str], start: int, count: int) -> list[str]:
     return [pool[(start + j) % n] for j in range(count)]
 
 
+def _economics(i: int) -> tuple[float, float, float]:
+    """A UNIQUE, valid economics triple per scenario (returns reference, cost_low, cost_high).
+
+    Deterministic function of the index; guarantees `cost_low < cost_high < reference`. The three
+    axes are independent digits of i, and `reference` is the fast digit (i % 25) so scale cycles
+    every 25 rounds -- decorrelated from round number and from the 12 domains. The triple is
+    unique for every i up to 25*12*13 = 3900 (>= the 3840 content capacity), because `reference`
+    is injective in the fast digit, `cost_high` in the next, and `cost_low` in the last.
+    """
+    a, b, c = i % 25, (i // 25) % 12, (i // 300) % 13
+    reference = 80 + 6 * a                      # 80..224 across 25 levels
+    cost_high = round(0.60 * reference) + b     # ~0.60R .. 0.66R
+    cost_low = round(0.35 * reference) + c      # ~0.35R .. 0.45R
+    return float(reference), float(cost_low), float(cost_high)
+
+
 def _check_uniform() -> None:
     for d in DOMAINS:
         assert len(d["subjects"]) == SUBJ_N, d["category"]
@@ -550,6 +566,7 @@ def build(count: int = 3000) -> list[dict]:
         risk_start = (i * 7) % len(RISK_FACTORS)
         succ_start = (i * 11) % len(SUCCESS_CRITERIA)
         time_i = (i * 3) % len(TIMELINES)
+        reference_value, cost_low, cost_high = _economics(i)   # unique per scenario
 
         scenarios.append({
             "id": f"SCN-{i + 1:04d}",
@@ -562,6 +579,10 @@ def build(count: int = 3000) -> list[dict]:
             "timeline": TIMELINES[time_i],
             "risk_factors": _window(RISK_FACTORS, risk_start, 2),
             "success_criteria": _window(SUCCESS_CRITERIA, succ_start, 2),
+            # Economics (DESIGN §2): a UNIQUE valid triple per scenario, decorrelated from domain.
+            "reference_value": reference_value,
+            "cost_low": cost_low,
+            "cost_high": cost_high,
         })
     return scenarios
 
@@ -572,6 +593,10 @@ def validate(scenarios: list[dict]) -> None:
         raise ValueError("duplicate ids")
     if ids != [f"SCN-{i + 1:04d}" for i in range(len(scenarios))]:
         raise ValueError("ids are not contiguous SCN-0001..N")
+
+    econ = {(s["reference_value"], s["cost_low"], s["cost_high"]) for s in scenarios}
+    if len(econ) != len(scenarios):
+        raise ValueError("economics are not unique across scenarios")
 
     rendered = set()
     for s in scenarios:

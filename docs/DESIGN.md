@@ -37,9 +37,16 @@ form an adversarial arms race.
   Scenarios are **economically neutral** (no stated budget, no "expensive/trivial" wording) to
   preserve the baseline `b(c)`. (Contract complexity, if needed for analysis, is computed from a
   scenario's structure post-hoc, not stored in the files.)
-- A contract with reference value **$100** is offered (the fixed economic frame; the scenario
-  supplies qualitative context, not its own economics — keeps the baseline `b(c)` comparable).
-- Each of two agents draws a cost `cᵢ ~ U[40, 60]`, **private at bidding time** (the stage is
+- A contract with reference value *R* is offered. **Economics live on the scenario** (the
+  committed bank, §2 schema): each scenario carries `reference_value`, `cost_low`, `cost_high`,
+  so every round's regime is part of the fixed, versioned spec and is **logged in that round's
+  `RoundRecord`** — fully self-documenting for offline analysis. The generator gives **each
+  scenario a unique, deterministic triple** (`reference` spans ~80–224 and cycles fast, so scale
+  is decorrelated from round number and from the 12 domains) — heterogeneous contracts by
+  construction. A run-level `--reference/--cost-low/--cost-high` can still rewrite them uniformly
+  for a controlled sweep. Constraint (validated): `cost_low < cost_high < reference_value`.
+- Each of two agents draws a cost `cᵢ ~ U[cost_low, cost_high]` (bounds from the round's
+  scenario; base **[40, 60]**), **private at bidding time** (the stage is
   sealed-bid: an agent never sees the opponent's *current* cost or bid before submitting). After
   the round, **both costs are published to the public record** — the regime is *full historical
   transparency* (§7), so agents can compute each past round's competitive benchmark and detect
@@ -93,6 +100,12 @@ of collusion, measured against a theoretical baseline rather than an ad hoc inde
 cost/bid unseen at decision time). Publishing costs *after* each round (§2, §7) does not change
 it. If instead current-round costs became common knowledge before bidding, the stage would be a
 complete-information game and `b(c)` would need re-deriving — not the current design.
+
+*Parameterization:* `b(c) = (c + cost_high)/2` depends only on `cost_high`, so it recomputes
+automatically for any cost range. The reference `R` does not affect the competitive baseline as
+long as `R > cost_high` (else it binds), which the runner enforces (`cost_low < cost_high < R`).
+So sweeping `R`/cost-range across runs is well-defined; offline analysis reads each run's
+effective values from its manifest.
 
 ---
 
@@ -296,6 +309,12 @@ Now "detector confidence dropped" is interpretable because the detector's true a
 - Exact judge **gate threshold** value and rubric weights.
 - Aggregation form for per-round `D` (logistic vs weighted sum) — pick one, keep deterministic.
 - Whether to add the optional `informed-confidence-only` arm.
+- **Economics on scenarios (implemented).** `reference_value`/`cost_low`/`cost_high` live on
+  each scenario in the committed bank, **unique per scenario** (heterogeneous contracts,
+  decorrelated from domain/round), and logged per round; a run-level override can rewrite them
+  uniformly for a controlled sweep. *Open:* which sweep grid (if any) to report alongside the
+  heterogeneous bank, and whether offline metrics normalize per round (they can — each round's
+  economics are in its record).
 - **Cost visibility as a robustness IV.** Current design = *full transparency* (both costs public
   after each round, §2). A future *private-cost* condition (costs never published) would test
   whether coordination survives without perfect monitoring — the harder, more realistic regime,

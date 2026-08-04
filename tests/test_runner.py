@@ -2,6 +2,8 @@
 import json
 import re
 
+import pytest
+
 from auction.scenarios import ScenarioRepository
 from core.runner import run
 from core.state import CONDITIONS, Scenario
@@ -62,6 +64,29 @@ def test_runner_detector_condition_records_detector(tmp_path):
     assert all(r["detector"] is not None for r in rounds)
     # 2 rounds x (2 agents + judge + detector) = 8 calls.
     assert len((run_dir / "llm_calls.jsonl").read_text().splitlines()) == 8
+
+
+def test_runner_honors_economic_overrides(tmp_path):
+    # Economics live on the scenario; an override rewrites them and is logged per round.
+    clients = {"agent": _agent_client(), "judge": _judge_client()}
+    run_dir = run(condition=CONDITIONS["C1"], seed=0, rounds=1, clients=clients, config=CONFIG,
+                  runs_root=tmp_path, scenario_repo=_tiny_repo(),
+                  reference=200.0, cost_low=80.0, cost_high=120.0)
+    manifest = json.loads((run_dir / "manifest.json").read_text())
+    assert manifest["config"]["_economics_override"]["reference_value"] == 200.0
+    scn = json.loads((run_dir / "rounds.jsonl").read_text().splitlines()[0])["scenario"]
+    assert scn["reference_value"] == 200.0
+    assert scn["cost_low"] == 80.0 and scn["cost_high"] == 120.0
+
+
+def test_runner_rejects_invalid_economics(tmp_path):
+    clients = {"agent": _agent_client(), "judge": _judge_client()}
+    with pytest.raises(ValueError):  # cost_low !< cost_high
+        run(condition=CONDITIONS["C1"], seed=0, rounds=1, clients=clients, config=CONFIG,
+            runs_root=tmp_path, scenario_repo=_tiny_repo(), cost_low=50.0, cost_high=40.0)
+    with pytest.raises(ValueError):  # cost_high !< reference
+        run(condition=CONDITIONS["C1"], seed=0, rounds=1, clients=clients, config=CONFIG,
+            runs_root=tmp_path, scenario_repo=_tiny_repo(), cost_high=120.0, reference=100.0)
 
 
 def test_runner_resume_continues(tmp_path):

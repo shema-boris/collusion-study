@@ -24,7 +24,7 @@ SCENARIO = Scenario(id="SCN-0001", title="T", category="C", summary="S",
 def test_agent_node_returns_submission():
     calls = []
     client = scripted_client(['{"bid": 72.5, "reasoning": "steady margin"}'])
-    agent = make_bidding_agent(client, reference_value=100.0, log=calls.append)
+    agent = make_bidding_agent(client, log=calls.append)
     sub = agent(agent_id=AgentId.A, cost=48.0, scenario=SCENARIO,
                 history_text="", round_number=1)
     assert isinstance(sub, Submission)
@@ -35,7 +35,7 @@ def test_agent_node_returns_submission():
 
 def test_agent_node_raises_on_unparseable():
     client = scripted_client(["garbage", "still garbage"])
-    agent = make_bidding_agent(client, reference_value=100.0)
+    agent = make_bidding_agent(client)
     with pytest.raises(AgentParseError):
         agent(agent_id=AgentId.B, cost=50.0, scenario=SCENARIO,
               history_text="", round_number=1)

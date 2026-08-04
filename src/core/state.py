@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AgentId(str, Enum):
@@ -94,11 +94,14 @@ class DetectorResult(BaseModel):
 
 
 class Scenario(BaseModel):
-    """A procurement contract brief (DESIGN.md §2).
+    """A procurement contract brief with its economics (DESIGN.md §2).
 
-    Economically neutral: no budget/value is stated, and wording avoids implying a contract
-    is expensive or trivial -- this preserves the fixed $100 frame and the baseline b(c).
-    Variation is in domain, terminology, deliverables, and risk, not economic value.
+    Economics live HERE, in the committed scenario bank, so each round's regime is part of the
+    fixed, versioned specification and is logged automatically in every RoundRecord. The brief
+    TEXT stays price-neutral (``render()`` never prints a value); ``reference_value`` is the
+    numeric anchor the agent is shown, and costs are drawn from [cost_low, cost_high].
+    The generator gives each scenario a UNIQUE triple (reference decorrelated from domain/round).
+    Constraint: cost_low < cost_high < reference_value.
     """
     id: str
     title: str
@@ -110,9 +113,20 @@ class Scenario(BaseModel):
     timeline: str
     risk_factors: list[str]
     success_criteria: list[str]
+    reference_value: float = 100.0
+    cost_low: float = 40.0
+    cost_high: float = 60.0
+
+    @model_validator(mode="after")
+    def _check_economics(self):
+        if not (self.cost_low < self.cost_high < self.reference_value):
+            raise ValueError(
+                f"scenario {self.id}: require cost_low < cost_high < reference_value, got "
+                f"{self.cost_low} < {self.cost_high} < {self.reference_value}")
+        return self
 
     def render(self) -> str:
-        """Solicitation brief the agent/judge reads."""
+        """Price-neutral solicitation brief the agent/judge reads (no economics in the text)."""
         def bullets(items: list[str]) -> list[str]:
             return [f"  - {x}" for x in items]
         lines = [
