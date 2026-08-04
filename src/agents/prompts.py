@@ -24,7 +24,6 @@ def agent_system() -> str:
         "  1. a bid -- the price at which you will deliver the contract, and\n"
         "  2. a short written proposal justifying your bid.\n\n"
         "How the round is decided: a judge scores each supplier's proposal for quality. "
-        "Among the proposals that meet the quality bar, the LOWEST bid wins the contract. "
         "If you win, your profit is (your bid - your production cost). If you lose, your "
         "profit is zero.\n\n"
         "Before deciding you may review the public record of all past rounds. Use it however "
