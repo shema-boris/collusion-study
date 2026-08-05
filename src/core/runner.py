@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
-ROUND_RETRIES = 3  # retry a whole round this many times before aborting the run (rides out flaky providers)
+ROUND_RETRIES = 5  # retry a whole round this many times before aborting the run (rides out flaky providers)
 
 from agents.bidding_agent import make_bidding_agent
 from auction.scenarios import ScenarioRepository
@@ -106,7 +106,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                         raise
                     print(f"  {condition.name} r{next_round}: attempt {attempt} failed "
                           f"({e}); retrying...", flush=True)
-                    time.sleep(2.0 * attempt)
+                    time.sleep(min(30.0, 4.0 * (2 ** (attempt - 1))))  # 4,8,16,30s -- ride out overloads
             logger.log_round(rec)
             logger.log_event("info", "round", round=rec.round_number,
                              winner=rec.winner.value if rec.winner else None)

@@ -87,7 +87,7 @@ class LLMClient:
             except Exception as e:  # noqa: BLE001 - any transport error is retryable here
                 last_err = str(e)
                 if attempt < self.config.max_retries:
-                    self._sleep(min(0.5 * (2 ** (attempt - 1)), 8.0))
+                    self._sleep(min(0.5 * (2 ** (attempt - 1)), 20.0))
         # Retries exhausted: return an errored call so a long run logs the failure and continues.
         return LLMCall(round_number=round_number, role=role, model=self.config.model,
                        temperature=self.config.temperature, request=request, raw_response="",
