@@ -32,6 +32,7 @@ class ModelConfig(BaseModel):
     timeout: float = 60.0
     max_retries: int = 3
     extra_headers: Optional[dict] = None       # e.g. OpenRouter ranking headers (optional)
+    provider: Optional[dict] = None            # OpenRouter provider routing, e.g. {"ignore": ["Novita"]}
 
 
 def _openai_transport(messages: list, cfg: "ModelConfig", seed: Optional[int]):
@@ -45,8 +46,14 @@ def _openai_transport(messages: list, cfg: "ModelConfig", seed: Optional[int]):
         kwargs["seed"] = seed                  # best-effort determinism where supported
     if cfg.extra_headers:
         kwargs["extra_headers"] = cfg.extra_headers
+    if cfg.provider:
+        kwargs["extra_body"] = {"provider": cfg.provider}   # OpenRouter routing preferences
     resp = client.chat.completions.create(**kwargs)
-    text = resp.choices[0].message.content or ""
+    # Some providers return a 200 with an error body and no choices; surface it so retry re-routes.
+    choices = getattr(resp, "choices", None)
+    if not choices:
+        raise RuntimeError(f"provider returned no choices: {getattr(resp, 'error', None) or resp}")
+    text = choices[0].message.content or ""
     usage = getattr(resp, "usage", None)
     pt = getattr(usage, "prompt_tokens", None) if usage else None
     ct = getattr(usage, "completion_tokens", None) if usage else None

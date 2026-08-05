@@ -8,8 +8,11 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 from typing import Optional
+
+ROUND_RETRIES = 3  # retry a whole round this many times before aborting the run (rides out flaky providers)
 
 from agents.bidding_agent import make_bidding_agent
 from auction.scenarios import ScenarioRepository
@@ -87,9 +90,21 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     agent, judge, detector = build_nodes(clients, condition, logger)
     try:
         while state.round_number < rounds:
-            rec = run_round(state, agent_fn=agent, judge_fn=judge, detector_fn=detector,
-                            gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
-                            history_window=history_window)
+            next_round = state.round_number + 1
+            for attempt in range(1, ROUND_RETRIES + 1):
+                try:
+                    rec = run_round(state, agent_fn=agent, judge_fn=judge, detector_fn=detector,
+                                    gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
+                                    history_window=history_window)
+                    break
+                except Exception as e:  # transient node/provider failure -> retry the whole round
+                    logger.log_event("warn", "round failed; retrying", round=next_round,
+                                     attempt=attempt, error=str(e))
+                    if attempt == ROUND_RETRIES:
+                        raise
+                    print(f"  {condition.name} r{next_round}: attempt {attempt} failed "
+                          f"({e}); retrying...", flush=True)
+                    time.sleep(2.0 * attempt)
             logger.log_round(rec)
             logger.log_event("info", "round", round=rec.round_number,
                              winner=rec.winner.value if rec.winner else None)
