@@ -98,6 +98,14 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
 
 
 def main(argv=None) -> None:
+    # Load OPENROUTER_API_KEY (and any other vars) from a .env at the repo root, if present.
+    # Soft import so the package still works when python-dotenv isn't installed.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ROOT / ".env")
+    except ImportError:
+        pass
+
     from llm.client import clients_from_config
     from utils.config import load_yaml
 
