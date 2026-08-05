@@ -4,5 +4,6 @@ __pycache__/
 .venv/
 venv/
 runs/
+figures/
 *.egg-info/
 .env

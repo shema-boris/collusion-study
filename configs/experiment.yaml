@@ -8,7 +8,9 @@ rounds: 60                    # rounds per run (revisit vs sliding-window scale,
 history:
   window_policy: sliding_recent
   max_context_tokens: 100000  # model-dependent; token-budget selector added with LLM nodes
-  max_window_rounds: null     # optional hard cap on visible rounds (null = token-budget only)
+  # Agents see at most the most-recent N rounds. 40 keeps prompts well under a 32K context at
+  # ~300 tokens/round. Raise it (or null = full history) if you're on a 128K route.
+  max_window_rounds: 40
 
 # These economics are the BASE setting, not hardcoded constants: the runner accepts
 # --reference / --cost-low / --cost-high to override them per run, so they can be swept for
