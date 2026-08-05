@@ -7,10 +7,14 @@ rounds: 60                    # rounds per run (revisit vs sliding-window scale,
 # No retrieval / RAG / ranking / filtering / summary.
 history:
   window_policy: sliding_recent
-  max_context_tokens: 100000  # model-dependent; token-budget selector added with LLM nodes
-  # Agents see at most the most-recent N rounds. 40 keeps prompts well under a 32K context at
-  # ~300 tokens/round. Raise it (or null = full history) if you're on a 128K route.
-  max_window_rounds: 40
+  # Token-budget sliding window: agents see the most-recent rounds that fit this many tokens of
+  # history. Measured cost ~370 tokens/round, so 28000 -> ~75 rounds.
+  # CONFIRMED via OpenRouter API: qwen/qwen-2.5-72b-instruct serves 32,768 tokens (DeepInfra;
+  # Novita 32,000). There is NO larger-context provider for this model, so 28000 is correct here
+  # (leaves room for the current prompt + a 1024-token reply under 32,768). Only raise it if you
+  # switch to a genuinely larger-context model.
+  max_context_tokens: 28000
+  max_window_rounds: null     # optional hard round cap on top of the token budget (null = none)
 
 # These economics are the BASE setting, not hardcoded constants: the runner accepts
 # --reference / --cost-low / --cost-high to override them per run, so they can be swept for

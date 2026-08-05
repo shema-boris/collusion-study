@@ -50,6 +50,7 @@ def run_round(
     feedback_params: FeedbackParams,
     scenario_provider: Optional[Callable[[int], Scenario]] = None,
     history_window: Optional[int] = None,
+    max_context_tokens: Optional[int] = None,
     cost_low: float = 40.0,
     cost_high: float = 60.0,
 ) -> RoundRecord:
@@ -72,7 +73,13 @@ def run_round(
         renderer = (informed_renderer(feedback_params)
                     if cond.visibility is Visibility.INFORMED
                     else blind_renderer(feedback_params))
-        history_text = renderer.render_history(state.history, window=history_window)
+        # Token-budget sliding window (fit the most recent rounds under the context budget);
+        # falls back to a fixed round-count window when no token budget is set.
+        if max_context_tokens:
+            history_text = renderer.render_history_budget(
+                state.history, max_context_tokens, max_rounds=history_window)
+        else:
+            history_text = renderer.render_history(state.history, window=history_window)
     else:
         history_text = ""
 

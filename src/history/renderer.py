@@ -92,6 +92,25 @@ class HistoryRenderer:
         rounds = history if window is None else history[-window:]
         return "\n\n".join(self.render_round(r) for r in rounds)
 
+    def render_history_budget(self, history: list[RoundRecord], max_tokens: int,
+                              max_rounds: int | None = None) -> str:
+        """Most-recent rounds that fit `max_tokens` of history (DESIGN §10 sliding window).
+
+        Tokens are estimated at ~4 chars each (tokenizer-free, provider-agnostic). At least the
+        latest round is always included. `max_rounds` is an optional additional hard cap.
+        """
+        seq = history if max_rounds is None else history[-max_rounds:]
+        kept: list[str] = []
+        total = 0
+        for rec in reversed(seq):
+            text = self.render_round(rec)
+            est = len(text) // 4 + 1
+            if kept and total + est > max_tokens:
+                break
+            kept.append(text)
+            total += est
+        return "\n\n".join(reversed(kept))
+
 
 def blind_renderer(params: FeedbackParams) -> HistoryRenderer:
     return HistoryRenderer(params, show_detector=False)

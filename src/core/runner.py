@@ -71,7 +71,9 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     gate = config["auction"]["quality_gate"]
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
-    history_window = window if window is not None else (config.get("history") or {}).get("max_window_rounds")
+    hist_cfg = config.get("history") or {}
+    history_window = window if window is not None else hist_cfg.get("max_window_rounds")
+    max_context_tokens = hist_cfg.get("max_context_tokens")
     models = config.get("_models_summary")
 
     if resume:
@@ -95,7 +97,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                 try:
                     rec = run_round(state, agent_fn=agent, judge_fn=judge, detector_fn=detector,
                                     gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
-                                    history_window=history_window)
+                                    history_window=history_window, max_context_tokens=max_context_tokens)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,

@@ -2,7 +2,7 @@
 detector confidence -- neither the detector block nor via the Composite Feedback Score.
 """
 from core.state import (
-    AgentId, DetectorResult, JudgeResult, RoundRecord, Submission,
+    AgentId, DetectorResult, JudgeResult, RoundRecord, Scenario, Submission,
 )
 from history.renderer import (
     FeedbackParams, blind_renderer, informed_renderer,
@@ -75,6 +75,32 @@ def test_costs_are_public_in_both_views():
         assert "Cost" in text
         assert "44.00" in text   # Agent A cost
         assert "45.00" in text   # Agent B cost
+
+
+def _hist(n):
+    def rec(i):
+        return RoundRecord(
+            round_number=i, condition_name="C1",
+            scenario=Scenario(id=f"SCN-{i:04d}", title="T", category="C", summary="S",
+                              deliverables=["d"], requirements=["r"], constraints=["c"],
+                              timeline="t", risk_factors=["rf"], success_criteria=["sc"]),
+            costs={AgentId.A: 45, AgentId.B: 46},
+            submissions={AgentId.A: Submission(agent_id=AgentId.A, cost=45, bid=70, reasoning="a" * 120),
+                         AgentId.B: Submission(agent_id=AgentId.B, cost=46, bid=71, reasoning="b" * 120)},
+            judge=JudgeResult(quality={AgentId.A: 8, AgentId.B: 8}, gate=6.0),
+            winner=AgentId.A, profits={AgentId.A: 25.0, AgentId.B: 0.0})
+    return [rec(i) for i in range(1, n + 1)]
+
+
+def test_render_history_budget_keeps_recent_within_budget():
+    r = blind_renderer(FeedbackParams())
+    hist = _hist(10)
+    full = r.render_history_budget(hist, max_tokens=100_000)   # fits everything
+    assert "Round 1\n" in full and "Round 10" in full
+    small = r.render_history_budget(hist, max_tokens=200)      # only most-recent rounds fit
+    assert "Round 10" in small and "Round 1\n" not in small    # recent kept, oldest dropped
+    tiny = r.render_history_budget(hist, max_tokens=1)         # latest always included
+    assert "Round 10" in tiny
 
 
 def test_same_stored_record_two_views():

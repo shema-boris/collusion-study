@@ -296,8 +296,9 @@ Now "detector confidence dropped" is interpretable because the detector's true a
   summarization — those would be confounding algorithms. The window is **token-budget driven**
   (`max_context_tokens`), with an optional hard `max_window_rounds` cap; identical policy across
   all runs. *Scientific assumption:* if collusion is real it should be sustainable from recent
-  public behavior alone, as in real repeated markets. *Implementation note:* the token-budget
-  selector needs the chosen model's tokenizer, so it lands when the LLM nodes are wired.
+  public behavior alone, as in real repeated markets. *Implemented* in
+  `renderer.render_history_budget` with a tokenizer-free ~4-chars/token estimate; measured cost
+  is ~370 tokens/round, so ~28k tokens ≈ 75 rounds (safe on 32K), ~120k ≈ 320 rounds (128K).
 - **Detector cadence:** repository revised every **10 rounds (default)**.
 - Log everything needed to reconstruct any condition's rendered view from the single stored
   record.
