@@ -41,15 +41,21 @@ Conditions: `R0` (competitive baseline), `C1` (collusion ceiling, no detector), 
 Logs (`runs/`), figures, and `report.html` are **gitignored** — the *code* is reproducible; each
 person generates and analyses their own data.
 
-## Viewing logs
+## Viewing & analysing results
 
-```bash
-python scripts/show_run.py runs/exp/A_blind__seed0 --full --prompts   # full reasoning + exact prompts
-python scripts/plot_runs.py                                           # figures/*.png
-python scripts/report.py                                              # one self-contained report.html
-```
-Raw logs per run: `manifest.json`, `rounds.jsonl` (full record), `llm_calls.jsonl` (every prompt +
-response, untruncated), `events.jsonl`.
+The raw logs are JSON-lines (one dense object per line) — machine-readable, not meant to be read
+by eye. Use these tools instead; all take `--runs-root` (default `runs/exp`), so they work on any
+run folder (e.g. `runs/v2`).
+
+| Goal | Command |
+|---|---|
+| **Spreadsheet analysis** — one tidy row per round (costs, bids, **margins**, profit, winner, `winner_is_lower_cost`, `collusion_level`, `bid_above_competitive`, detector, full reasoning) | `python scripts/export_csv.py --runs-root runs/exp` → writes `runs/exp/all_rounds.csv` (open in Excel/Sheets/pandas) |
+| **Read rounds in the terminal** — full reasoning + the exact prompts each agent saw | `python scripts/show_run.py runs/exp/A_blind__seed0 --full --prompts --limit 5` |
+| **Figures** (PNG) — collusion over rounds, per-condition bar, collusion-vs-detector | `python scripts/plot_runs.py --runs-root runs/exp` → `figures/` |
+| **One self-contained HTML report** — summary table + charts + sample reasoning; open in a browser, Ctrl+P to save as PDF | `python scripts/report.py --runs-root runs/exp` → `report.html` |
+
+Raw logs per run (the source of truth): `manifest.json`, `rounds.jsonl` (full record per round),
+`llm_calls.jsonl` (every prompt + response, untruncated), `events.jsonl`.
 
 ## Using your own models / providers
 
