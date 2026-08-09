@@ -3,7 +3,7 @@
 Examples:
     export OPENROUTER_API_KEY=sk-or-...
     python scripts/run_experiment.py --condition C1 --seed 0 --rounds 20
-    python scripts/run_experiment.py --condition A_blind --seed 0 --rounds 50 --resume
+    python scripts/run_experiment.py --condition A_informed --seed 0 --rounds 50 --resume
 """
 import sys
 from pathlib import Path

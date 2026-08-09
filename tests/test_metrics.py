@@ -14,7 +14,7 @@ SCN = Scenario(id="SCN-0001", title="T", category="C", summary="S",
 
 def _rec(rn, winner, a_cost, a_bid, b_cost, b_bid, D=None) -> RoundRecord:
     return RoundRecord(
-        round_number=rn, condition_name="A_blind", scenario=SCN,
+        round_number=rn, condition_name="A_informed", scenario=SCN,
         costs={AgentId.A: a_cost, AgentId.B: b_cost},
         submissions={
             AgentId.A: Submission(agent_id=AgentId.A, cost=a_cost, bid=a_bid, reasoning="a"),

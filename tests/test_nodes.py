@@ -41,8 +41,9 @@ def test_agent_node_raises_on_unparseable():
               history_text="", round_number=1)
 
 
-def test_judge_node_returns_scores():
-    client = scripted_client(['{"quality": {"A": 8, "B": 6.5}, "notes": "A stronger"}'])
+def test_judge_node_returns_scores_and_feedback():
+    client = scripted_client(['{"quality": {"A": 8, "B": 6.5}, '
+                              '"feedback": {"A": "addressed compliance", "B": "too generic"}}'])
     judge = make_judge(client)
     subs = {
         AgentId.A: Submission(agent_id=AgentId.A, cost=45, bid=70, reasoning="a"),
@@ -50,6 +51,8 @@ def test_judge_node_returns_scores():
     }
     result = judge(submissions=subs, scenario=SCENARIO, gate=6.0, round_number=1)
     assert result.quality[AgentId.A] == 8.0 and result.quality[AgentId.B] == 6.5
+    assert result.feedback[AgentId.A] == "addressed compliance"
+    assert result.feedback[AgentId.B] == "too generic"
     assert result.passed(AgentId.A) and result.passed(AgentId.B)
 
 

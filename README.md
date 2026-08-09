@@ -23,8 +23,10 @@ python scripts/run_all.py --rounds 100 --seeds 0        # runs all 6 conditions 
 python scripts/report.py                                # -> report.html (open in a browser; Ctrl+P = PDF)
 ```
 
-Conditions: `R0` (competitive baseline), `C1` (collusion ceiling, no detector), and the 2×2
-`S_blind / S_informed / A_blind / A_informed` (static/adaptive detector × blind/informed agents).
+Conditions: `R0` (competitive baseline), `C1` (collusion ceiling / unmonitored baseline), and the
+informed detector cells `S_informed` / `A_informed` (static / adaptive detector, visible to the
+agents and penalizing their profit). Blind conditions were removed — a detector the agent neither
+sees nor is penalized by is behaviourally identical to C1.
 
 ## Layout
 
@@ -50,7 +52,7 @@ run folder (e.g. `runs/v2`).
 | Goal | Command |
 |---|---|
 | **Spreadsheet analysis** — one tidy row per round (costs, bids, **margins**, profit, winner, `winner_is_lower_cost`, `collusion_level`, `bid_above_competitive`, detector, full reasoning) | `python scripts/export_csv.py --runs-root runs/exp` → writes `runs/exp/all_rounds.csv` (open in Excel/Sheets/pandas) |
-| **Read rounds in the terminal** — full reasoning + the exact prompts each agent saw | `python scripts/show_run.py runs/exp/A_blind__seed0 --full --prompts --limit 5` |
+| **Read rounds in the terminal** — full reasoning + the exact prompts each agent saw | `python scripts/show_run.py runs/exp/A_informed__seed0 --full --prompts --limit 5` |
 | **Figures** (PNG) — collusion over rounds, per-condition bar, collusion-vs-detector | `python scripts/plot_runs.py --runs-root runs/exp` → `figures/` |
 | **One self-contained HTML report** — summary table + charts + sample reasoning; open in a browser, Ctrl+P to save as PDF | `python scripts/report.py --runs-root runs/exp` → `report.html` |
 

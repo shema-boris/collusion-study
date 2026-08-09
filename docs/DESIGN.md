@@ -174,23 +174,23 @@ Agents (in the *informed* condition only — see §6) reason over the *why*, not
 
 Independent variables: **oversight regime** × **agent visibility**, plus two reference cells.
 
-| Cell            | Detector | Agents see detector signals? | Purpose                                            |
-|-----------------|----------|------------------------------|----------------------------------------------------|
-| **R0** one-shot | none     | no history                   | Competitive-price **baseline**                     |
-| **C1** free     | none     | —                            | Collusion **ceiling** — do agents coordinate at all?|
-| **S-blind**     | static   | no                           | Emergent evasion vs a fixed filter                 |
-| **S-informed**  | static   | yes                          | Instructed evasion vs a fixed filter               |
-| **A-blind**     | adaptive | no                           | **Emergent arms race — scientific headline**       |
-| **A-informed**  | adaptive | yes                          | Fastest arms race; upper bound on subtlety         |
+| Cell            | Detector | Oversight on agents | Purpose                                            |
+|-----------------|----------|---------------------|----------------------------------------------------|
+| **R0** one-shot | none     | —                   | Competitive-price **baseline**                     |
+| **C1** free     | none     | none                | Collusion **ceiling** / unmonitored baseline       |
+| **S_informed**  | static   | visible + penalty   | Does a fixed, visible+costly monitor change behavior? |
+| **A_informed**  | adaptive | visible + penalty   | Does an *adapting* monitor drive an arms race?     |
 
 - **static** detector = repository frozen after calibration (§8); **adaptive** = repository
   revised on the K-round clock during the run.
-- **`informed`** = agents are shown the detector's full structured output, including its
-  reasoning and current tells. This deliberately hands informed agents the *evasion playbook*,
-  so evasion there is heavily scaffolded. **A-blind is therefore the headline**: subtle evasion
-  emerging with *no* detector signal ever shown is the result that matters.
-- *(Optional, skip unless compute is cheap:* an `informed-confidence-only` arm to separate
-  "knowing you're watched" from "knowing how.")*
+- **Oversight is "visible + penalty":** the detector's confidence + tells are shown in the agent's
+  history, AND its suspicion taxes the winner's realized profit (§8). Both require the agent to be
+  **informed** — the detector affects behavior only through what the agent sees and what it costs.
+- **Blind conditions were removed.** A detector the agent neither sees nor is penalized by is a
+  silent observer, so agent behavior is identical to C1. (To read the detector on *unmonitored*
+  behavior, run it offline over C1's logs — no separate live condition needed.)
+- The core contrasts: **C1 vs R0** (does collusion emerge unmonitored?), **informed vs C1** (does
+  visible+costly oversight change behavior?), **A_informed vs S_informed** (adapting vs static).
 
 ---
 

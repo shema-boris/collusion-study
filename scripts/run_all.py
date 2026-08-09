@@ -7,7 +7,7 @@ rate limits without babysitting it. Examples:
 
     python scripts/run_all.py --rounds 400 --seeds 0
     python scripts/run_all.py --rounds 400 --seeds 0 --passes 50 --pass-wait 180
-    python scripts/run_all.py --rounds 400 --conditions C1,A_blind
+    python scripts/run_all.py --rounds 400 --conditions C1,A_informed
 """
 import argparse
 import json
@@ -22,7 +22,7 @@ from core.runner import load_live_context, run  # noqa: E402
 from core.state import CONDITIONS  # noqa: E402
 from history.storage import run_dir_name  # noqa: E402
 
-ALL_CONDITIONS = ["R0", "C1", "S_blind", "S_informed", "A_blind", "A_informed"]
+ALL_CONDITIONS = ["R0", "C1", "S_informed", "A_informed"]
 
 
 def _complete(runs_root: Path, name: str, seed: int, rounds: int) -> bool:

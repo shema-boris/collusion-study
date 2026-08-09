@@ -51,6 +51,9 @@ def run_round(
     scenario_provider: Optional[Callable[[int], Scenario]] = None,
     history_window: Optional[int] = None,
     max_context_tokens: Optional[int] = None,
+    winner_rule: str = "lowest_bid",
+    quality_weight: float = 0.0,
+    detector_fine: float = 0.0,
     cost_low: float = 40.0,
     cost_high: float = 60.0,
 ) -> RoundRecord:
@@ -93,20 +96,32 @@ def run_round(
     # 4. Judge scores reasoning quality (the eligibility gate).
     judge = judge_fn(submissions=submissions, scenario=scenario, gate=gate, round_number=r)
 
-    # 5. Winner = lowest bid among gate-passers; 6. payoffs.
+    # 5. Winner -- best value (quality-adjusted price) or lowest bid.
     bids = {a: submissions[a].bid for a in submissions}
-    winner = select_winner(state.seed, r, bids, judge.quality, gate)
-    profits = compute_profits(bids, costs, winner)
+    if winner_rule == "value":
+        reference = scenario.reference_value if scenario is not None else 100.0
+        winner = select_winner(state.seed, r, bids, judge.quality, gate,
+                               quality_weight=quality_weight, reference=reference)
+    else:
+        winner = select_winner(state.seed, r, bids, judge.quality, gate)
 
     record = RoundRecord(
         round_number=r, condition_name=cond.name, scenario=scenario,
         costs=costs, submissions=submissions,
-        judge=judge, winner=winner, profits=profits, detector=None,
+        judge=judge, winner=winner, profits={}, detector=None,
     )
 
-    # 7. Detector -- only when a detector regime is active.
+    # 6. Detector runs BEFORE profit, so its suspicion can tax the winner's margin (DESIGN §5, §8).
     if cond.detector_regime is not DetectorRegime.NONE and detector_fn is not None:
         record.detector = detector_fn(state=state, record=record)
+    detector_D = record.detector.confidence if record.detector is not None else 0.0
+
+    # 7. Realized profit = (bid - cost) * (1 - detector_fine * D); loser earns 0.
+    #    The penalty applies ONLY where the agent is INFORMED (visible + consequential oversight).
+    #    Blind runs the detector as a silent observer -- no penalty -- so it's a clean control.
+    fine = detector_fine if cond.visibility is Visibility.INFORMED else 0.0
+    record.profits = compute_profits(bids, costs, winner,
+                                     detector_confidence=detector_D, fine=fine)
 
     state.history.append(record)
     state.round_number = r

@@ -23,7 +23,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from history.storage import RunLogger  # noqa: E402
 from metrics.collusion import round_series, win_rotation_rate  # noqa: E402
 
-ORDER = ["R0", "C1", "S_blind", "S_informed", "A_blind", "A_informed"]
+ORDER = ["R0", "C1", "S_informed", "A_informed"]
 
 CSS = """
 :root { color-scheme: light; }

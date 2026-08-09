@@ -36,17 +36,27 @@ def draw_costs(seed: int, round_number: int,
 
 def select_winner(seed: int, round_number: int,
                   bids: dict[AgentId, float], quality: dict[AgentId, float],
-                  gate: float) -> Optional[AgentId]:
-    """Lowest bid among submissions clearing the quality gate wins (DESIGN.md §2.1).
+                  gate: float, *, quality_weight: float = 0.0,
+                  reference: float = 100.0) -> Optional[AgentId]:
+    """Winner among submissions clearing the quality gate (DESIGN.md §2.1).
 
-    Returns None if neither submission clears the gate. Ties on bid are broken by the
-    round's dedicated tie-break stream.
+    Best-value (MEAT) score, higher wins:
+        score = (1 - quality_weight) * (1 - bid/reference) + quality_weight * (quality/10)
+    A lower bid and a higher quality both raise the score, with price weighted
+    ``1 - quality_weight`` and quality ``quality_weight`` (so quality_weight < 0.5 keeps price
+    dominant). ``quality_weight = 0`` reduces to pure lowest-bid. Returns None if neither clears
+    the gate; ties are broken by the round's tie-break stream.
     """
     passers = [a for a in bids if quality[a] >= gate]
     if not passers:
         return None
-    min_bid = min(bids[a] for a in passers)
-    leaders = [a for a in passers if bids[a] == min_bid]
+    if quality_weight <= 0.0:
+        score = {a: -bids[a] for a in passers}                    # lowest bid wins
+    else:
+        score = {a: (1 - quality_weight) * (1 - bids[a] / reference)
+                    + quality_weight * (quality[a] / 10.0) for a in passers}
+    best = max(score.values())
+    leaders = [a for a in passers if score[a] == best]
     if len(leaders) == 1:
         return leaders[0]
     _, tie_rng = _substreams(seed, round_number)

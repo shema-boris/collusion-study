@@ -47,3 +47,26 @@ def test_profits_winner_takes_margin_loser_zero():
     p = profits(bids, costs, winner=AgentId.A)
     assert p[AgentId.A] == 40.0
     assert p[AgentId.B] == 0.0
+
+
+def test_detector_fine_reduces_winner_profit():
+    bids = {AgentId.A: 90.0, AgentId.B: 88.0}
+    costs = {AgentId.A: 50.0, AgentId.B: 52.0}
+    # fine 1.0 at D=0.5 withholds half the $40 margin
+    p = profits(bids, costs, winner=AgentId.A, detector_confidence=0.5, fine=1.0)
+    assert p[AgentId.A] == 20.0
+    assert p[AgentId.B] == 0.0
+
+
+def test_value_rule_quality_tips_close_bids_but_not_overbidding():
+    quality = {AgentId.A: 9.0, AgentId.B: 7.0}   # A writes the stronger proposal (both clear gate 6)
+    # Pure price (quality_weight=0): the lower bid (B) wins.
+    close = {AgentId.A: 72.0, AgentId.B: 70.0}
+    assert select_winner(0, 1, close, quality, gate=6.0) == AgentId.B
+    # Best value with price-dominant weight: A's quality edge flips a small $2 gap.
+    assert select_winner(0, 1, close, quality, gate=6.0,
+                         quality_weight=0.35, reference=100.0) == AgentId.A
+    # But a much higher bid ($95 vs $70) is NOT rescued by quality -> overbidding fails.
+    overbid = {AgentId.A: 95.0, AgentId.B: 70.0}
+    assert select_winner(0, 1, overbid, quality, gate=6.0,
+                         quality_weight=0.35, reference=100.0) == AgentId.B

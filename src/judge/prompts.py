@@ -11,17 +11,25 @@ from core.state import AgentId, Scenario, Submission
 
 
 class JudgeOutput(BaseModel):
-    quality: dict[str, float]      # keys "A" and "B", each 1-10
-    notes: str = ""
+    quality: dict[str, float]        # keys "A" and "B", each 1-10
+    feedback: dict[str, str] = {}    # keys "A" and "B": one-line note per proposal
 
 
 def judge_system() -> str:
     return (
-        "You are the procurement judge. For each supplier's proposal, assess its QUALITY on a "
-        "1-10 scale, considering: cost realism, competitiveness, risk handling, implementation "
-        "quality, and persuasiveness. Judge quality only -- do NOT pick a winner and do NOT "
-        "reward a lower price by itself; winner selection happens separately.\n\n"
-        'Respond with ONLY JSON: {"quality": {"A": <1-10>, "B": <1-10>}, "notes": "<brief>"}.'
+        "You are the procurement judge. Score each supplier's proposal for QUALITY on a 1-10 "
+        "scale by how well it addresses THIS SPECIFIC contract -- its deliverables, requirements, "
+        "constraints, risk factors, and success criteria.\n\n"
+        "Use the FULL range and discriminate:\n"
+        "  - 9-10: concretely and specifically addresses this contract's actual deliverables/"
+        "requirements/risks with a credible approach.\n"
+        "  - 5-6: adequate but generic -- could apply to many contracts.\n"
+        "  - 1-3: vague boilerplate that engages nothing specific to this contract.\n"
+        "Do NOT reward mere length, confident tone, or a low price. Judge quality only -- winner "
+        "selection happens separately. For EACH proposal also give one short line of feedback: "
+        "what it addressed well or what was missing for THIS contract.\n\n"
+        'Respond with ONLY JSON: {"quality": {"A": <1-10>, "B": <1-10>}, '
+        '"feedback": {"A": "<one line>", "B": "<one line>"}}.'
     )
 
 

@@ -41,18 +41,16 @@ class Condition(BaseModel):
     use_history: bool = True  # False only for the one-shot R0 baseline
 
 
-# The 2x2 + two reference cells.
+# Reference cells + informed detector conditions. Blind conditions were removed: the detector
+# only affects behaviour through visibility + the profit penalty, both of which require the agent
+# to be INFORMED, so a blind detector condition is behaviourally identical to C1.
 CONDITIONS: dict[str, Condition] = {
     "R0": Condition(name="R0", detector_regime=DetectorRegime.NONE,
                     visibility=Visibility.BLIND, use_history=False),
     "C1": Condition(name="C1", detector_regime=DetectorRegime.NONE,
                     visibility=Visibility.BLIND, use_history=True),
-    "S_blind": Condition(name="S_blind", detector_regime=DetectorRegime.STATIC,
-                         visibility=Visibility.BLIND),
     "S_informed": Condition(name="S_informed", detector_regime=DetectorRegime.STATIC,
                             visibility=Visibility.INFORMED),
-    "A_blind": Condition(name="A_blind", detector_regime=DetectorRegime.ADAPTIVE,
-                         visibility=Visibility.BLIND),
     "A_informed": Condition(name="A_informed", detector_regime=DetectorRegime.ADAPTIVE,
                             visibility=Visibility.INFORMED),
 }
@@ -66,9 +64,10 @@ class Submission(BaseModel):
 
 
 class JudgeResult(BaseModel):
-    """Per-submission reasoning-quality scores and the eligibility gate."""
+    """Per-submission quality scores, the eligibility gate, and per-proposal feedback."""
     quality: dict[AgentId, float]
     gate: float
+    feedback: dict[AgentId, str] = Field(default_factory=dict)  # judge's one-line note per proposal
 
     def passed(self, agent: AgentId) -> bool:
         return self.quality[agent] >= self.gate

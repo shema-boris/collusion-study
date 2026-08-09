@@ -57,7 +57,7 @@ def test_runner_c1_completes_and_logs(tmp_path):
 
 def test_runner_detector_condition_records_detector(tmp_path):
     clients = {"agent": _agent_client(), "judge": _judge_client(), "detector": _detector_client()}
-    run_dir = run(condition=CONDITIONS["A_blind"], seed=0, rounds=2, clients=clients,
+    run_dir = run(condition=CONDITIONS["A_informed"], seed=0, rounds=2, clients=clients,
                   config=CONFIG, runs_root=tmp_path, scenario_repo=_tiny_repo())
     rounds = [json.loads(ln) for ln in (run_dir / "rounds.jsonl").read_text().splitlines()]
     assert len(rounds) == 2

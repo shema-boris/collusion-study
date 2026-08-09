@@ -25,10 +25,9 @@ from history.storage import RunLogger  # noqa: E402
 from metrics.collusion import round_series  # noqa: E402
 
 # Fixed condition order + Okabe-Ito colorblind-safe hues (assigned by identity, never cycled).
-ORDER = ["R0", "C1", "S_blind", "S_informed", "A_blind", "A_informed"]
+ORDER = ["R0", "C1", "S_informed", "A_informed"]
 COLOR = {
-    "R0": "#000000", "C1": "#E69F00", "S_blind": "#56B4E9",
-    "S_informed": "#009E73", "A_blind": "#0072B2", "A_informed": "#D55E00",
+    "R0": "#000000", "C1": "#E69F00", "S_informed": "#009E73", "A_informed": "#D55E00",
 }
 COLLUSION_HUE, DETECTOR_HUE = "#0072B2", "#D55E00"
 INK, MUTED, GRID = "#1a1a1a", "#6b6b6b", "#d9d9d9"

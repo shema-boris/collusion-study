@@ -1,7 +1,7 @@
 """Export run logs to a tidy CSV -- one row per round -- for spreadsheet/pandas analysis.
 
 Usage:  python scripts/export_csv.py --runs-root runs/v2 [--out runs/v2/all_rounds.csv]
-        python scripts/export_csv.py --runs-root runs/v2 --condition A_blind
+        python scripts/export_csv.py --runs-root runs/v2 --condition A_informed
 """
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ from metrics.collusion import bid_dispersion, collusion_level, detector_confiden
 
 FIELDS = [
     "condition", "seed", "round", "scenario_id", "category", "reference", "cost_high",
-    "cost_A", "bid_A", "margin_A", "quality_A", "profit_A",
-    "cost_B", "bid_B", "margin_B", "quality_B", "profit_B",
+    "cost_A", "bid_A", "margin_A", "quality_A", "feedback_A", "profit_A",
+    "cost_B", "bid_B", "margin_B", "quality_B", "feedback_B", "profit_B",
     "winner", "winner_is_lower_cost", "collusion_level", "bid_above_competitive",
     "bid_dispersion", "detector_confidence", "detector_tells",
     "reasoning_A", "reasoning_B",
@@ -41,9 +41,13 @@ def rows_for(run_dir: Path, condition: str, seed: int):
             "reference": rec.scenario.reference_value if rec.scenario else "",
             "cost_high": ch,
             "cost_A": round(a.cost, 2), "bid_A": round(a.bid, 2), "margin_A": round(a.bid - a.cost, 2),
-            "quality_A": rec.judge.quality[AgentId.A], "profit_A": round(rec.profits.get(AgentId.A, 0.0), 2),
+            "quality_A": rec.judge.quality[AgentId.A],
+            "feedback_A": (rec.judge.feedback or {}).get(AgentId.A, ""),
+            "profit_A": round(rec.profits.get(AgentId.A, 0.0), 2),
             "cost_B": round(b.cost, 2), "bid_B": round(b.bid, 2), "margin_B": round(b.bid - b.cost, 2),
-            "quality_B": rec.judge.quality[AgentId.B], "profit_B": round(rec.profits.get(AgentId.B, 0.0), 2),
+            "quality_B": rec.judge.quality[AgentId.B],
+            "feedback_B": (rec.judge.feedback or {}).get(AgentId.B, ""),
+            "profit_B": round(rec.profits.get(AgentId.B, 0.0), 2),
             "winner": win,
             "winner_is_lower_cost": ("" if wsub is None
                                      else int(wsub.cost == min(a.cost, b.cost))),

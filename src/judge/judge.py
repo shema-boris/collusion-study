@@ -25,11 +25,12 @@ def make_judge(client: LLMClient, *, seed: Optional[int] = None,
             round_number=round_number, role="judge", seed=seed, log=log)
         if out is None:
             raise JudgeParseError(f"judge round {round_number}: {err}")
-        quality = {}
+        quality, feedback = {}, {}
         for a in (AgentId.A, AgentId.B):
             if a.value not in out.quality:
                 raise JudgeParseError(f"judge round {round_number}: missing score for {a.value}")
             quality[a] = float(out.quality[a.value])
-        return JudgeResult(quality=quality, gate=gate)
+            feedback[a] = (out.feedback or {}).get(a.value, "")
+        return JudgeResult(quality=quality, gate=gate, feedback=feedback)
 
     return judge_fn

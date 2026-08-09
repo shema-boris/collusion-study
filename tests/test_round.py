@@ -37,7 +37,7 @@ def _run(condition_name, n=3, seed=1):
 
 
 def test_history_grows_and_winner_is_lower_cost_bidder():
-    state, records = _run("A_blind")
+    state, records = _run("A_informed")
     assert len(state.history) == 3
     assert [r.round_number for r in records] == [1, 2, 3]
     for r in records:
@@ -47,7 +47,7 @@ def test_history_grows_and_winner_is_lower_cost_bidder():
 
 
 def test_detector_runs_only_when_regime_active():
-    _, with_det = _run("A_blind")
+    _, with_det = _run("A_informed")
     _, no_det = _run("C1")   # regime NONE
     assert all(r.detector is not None for r in with_det)
     assert all(r.detector is None for r in no_det)
@@ -55,6 +55,6 @@ def test_detector_runs_only_when_regime_active():
 
 def test_costs_identical_across_conditions_at_fixed_seed():
     # The reproducibility guarantee that makes cross-condition contrasts valid.
-    _, a = _run("A_blind", seed=5)
+    _, a = _run("C1", seed=5)
     _, b = _run("A_informed", seed=5)
     assert [r.costs for r in a] == [r.costs for r in b]

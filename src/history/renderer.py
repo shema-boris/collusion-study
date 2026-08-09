@@ -66,15 +66,21 @@ class HistoryRenderer:
             P = rec.profits.get(a, 0.0) / profit_norm
             D = rec.detector.confidence if rec.detector is not None else 0.0
             cfs = self._cfs(J, P, D, detector_visible)
-            lines += [
+            agent_lines = [
                 f"  Agent {a.value}",
                 f"    Cost          = {sub.cost:.2f}",  # public: full transparency (DESIGN §2, §7)
                 f"    Bid           = {sub.bid:.2f}",
                 f"    Reasoning     = {sub.reasoning}",
                 f"    Judge quality = {rec.judge.quality[a]:.2f}",
+            ]
+            jfb = (rec.judge.feedback or {}).get(a)
+            if jfb:
+                agent_lines.append(f"    Judge feedback = {jfb}")
+            agent_lines += [
                 f"    Profit        = {rec.profits.get(a, 0.0):.2f}",
                 f"    Composite Feedback = {cfs:.3f}",
             ]
+            lines += agent_lines
         winner = rec.winner.value if rec.winner is not None else "none"
         lines.append(f"  Winner = {winner}")
         if detector_visible:

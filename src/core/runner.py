@@ -68,7 +68,11 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
         scenario_provider = repo.get
 
     fb = FeedbackParams.from_config(config["feedback"])
-    gate = config["auction"]["quality_gate"]
+    auction = config["auction"]
+    gate = auction["quality_gate"]
+    winner_rule = auction.get("winner_rule", "lowest_bid")
+    quality_weight = auction.get("quality_weight", 0.0)
+    detector_fine = auction.get("detector_fine", 0.0)
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -97,7 +101,9 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                 try:
                     rec = run_round(state, agent_fn=agent, judge_fn=judge, detector_fn=detector,
                                     gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
-                                    history_window=history_window, max_context_tokens=max_context_tokens)
+                                    history_window=history_window, max_context_tokens=max_context_tokens,
+                                    winner_rule=winner_rule, quality_weight=quality_weight,
+                                    detector_fine=detector_fine)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
