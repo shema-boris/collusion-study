@@ -26,9 +26,17 @@ from judge.judge import make_judge
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def build_nodes(clients: dict, condition: Condition, logger: RunLogger):
+def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
+                detector_fine: float = 0.0):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
-    agent = make_bidding_agent(clients["agent"], log=logger.log_llm_call)
+    # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
+    # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
+    from core.state import Visibility
+    agent_fine = (detector_fine if condition.visibility is Visibility.INFORMED
+                  and condition.detector_regime is not DetectorRegime.NONE else 0.0)
+    adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
+    agent = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
+                               detector_fine=agent_fine, adaptive=adaptive)
     judge = make_judge(clients["judge"], log=logger.log_llm_call)
     detector = None
     if condition.detector_regime is not DetectorRegime.NONE:
@@ -50,6 +58,12 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     """
     repo = scenario_repo or ScenarioRepository.load(ROOT / "configs" / "scenarios.yaml")
 
+    # Walk the bank in a seeded permutation so economics don't climb with the round index
+    # (the bank is sorted). Order depends on seed only -> shared across conditions, varies by
+    # seed. `scenario_order: sequential` in config restores the raw round-N -> scenario-N map.
+    shuffle = config.get("scenario_order", "shuffled") != "sequential"
+    base_provider = repo.ordered_provider(seed, shuffle=shuffle)
+
     overrides = {}
     if reference is not None:
         overrides["reference_value"] = reference
@@ -58,14 +72,14 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     if cost_high is not None:
         overrides["cost_high"] = cost_high
     if overrides:
-        Scenario.model_validate({**repo.get(1).model_dump(), **overrides})  # fail fast on bad econ
+        Scenario.model_validate({**base_provider(1).model_dump(), **overrides})  # fail fast on bad econ
 
         def scenario_provider(r):
-            return Scenario.model_validate({**repo.get(r).model_dump(), **overrides})
+            return Scenario.model_validate({**base_provider(r).model_dump(), **overrides})
 
         config = {**config, "_economics_override": overrides}
     else:
-        scenario_provider = repo.get
+        scenario_provider = base_provider
 
     fb = FeedbackParams.from_config(config["feedback"])
     auction = config["auction"]
@@ -93,7 +107,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                   models=models, experiment=experiment)
         state = ExperimentState(condition=condition, seed=seed)
 
-    agent, judge, detector = build_nodes(clients, condition, logger)
+    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1

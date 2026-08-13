@@ -16,10 +16,11 @@ git clone https://github.com/shema-boris/collusion-study.git
 cd collusion-study
 python -m venv .venv && source .venv/bin/activate      # Windows: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-python -m pytest -q                                     # 56 tests, no API key needed
+python -m pytest -q                                     # 67 tests, no API key needed
 
 cp .env.example .env                                    # add your OPENROUTER_API_KEY
-python scripts/run_all.py --rounds 100 --seeds 0        # runs all 6 conditions -> runs/exp/
+python scripts/calibrate_detector.py --rounds 10        # check the detector separates compete/collude
+python scripts/run_all.py --rounds 80 --seeds 0,1,2     # runs all 4 conditions x 3 seeds -> runs/exp/
 python scripts/report.py                                # -> report.html (open in a browser; Ctrl+P = PDF)
 ```
 
@@ -38,7 +39,8 @@ sees nor is penalized by is behaviourally identical to C1.
 - `src/llm/` — provider-agnostic client (OpenAI SDK) + structured parse-and-retry.
 - `src/history/` — append-only run logging and the condition-aware blind/informed renderers.
 - `src/metrics/` — offline metrics (collusion level, dispersion, win-rotation).
-- `scripts/` — `run_all`, `run_experiment`, `show_run`, `plot_runs`, `report`, `generate_scenarios`.
+- `scripts/` — `run_all`, `run_experiment`, `calibrate_detector`, `show_run`, `plot_runs`,
+  `report`, `export_csv`, `generate_scenarios`.
 
 Logs (`runs/`), figures, and `report.html` are **gitignored** — the *code* is reproducible; each
 person generates and analyses their own data.

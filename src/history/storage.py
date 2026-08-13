@@ -45,13 +45,17 @@ def run_dir_name(condition_name: str, seed: int) -> str:
 class RunLogger:
     """Append-only writer for a single run. Use as a context manager for safe finalize."""
 
-    def __init__(self, run_dir: Path, manifest: dict):
+    def __init__(self, run_dir: Path, manifest: dict, *, append: bool = True):
         self.run_dir = Path(run_dir)
         self.run_dir.mkdir(parents=True, exist_ok=True)
         self.manifest = manifest
-        self._rounds = open(self.run_dir / "rounds.jsonl", "a", encoding="utf-8")
-        self._llm = open(self.run_dir / "llm_calls.jsonl", "a", encoding="utf-8")
-        self._events = open(self.run_dir / "events.jsonl", "a", encoding="utf-8")
+        # append=True for resume (keep prior rounds); False for a fresh create, which MUST
+        # truncate any stale rounds.jsonl in a reused dir -- else the new run is silently
+        # concatenated onto old data (contaminating analysis).
+        mode = "a" if append else "w"
+        self._rounds = open(self.run_dir / "rounds.jsonl", mode, encoding="utf-8")
+        self._llm = open(self.run_dir / "llm_calls.jsonl", mode, encoding="utf-8")
+        self._events = open(self.run_dir / "events.jsonl", mode, encoding="utf-8")
         self._write_manifest()
 
     # --- construction -------------------------------------------------------
@@ -73,7 +77,7 @@ class RunLogger:
             "status": "running",
             "last_round": 0,
         }
-        return cls(run_dir, manifest)
+        return cls(run_dir, manifest, append=False)  # fresh run: truncate any stale files
 
     @classmethod
     def resume(cls, runs_root: str | Path, *, condition: Condition, seed: int,

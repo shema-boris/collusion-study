@@ -33,6 +33,47 @@ def test_agent_node_returns_submission():
     assert len(calls) == 1 and calls[0].role == "agent_A"
 
 
+def test_agent_system_states_penalty_only_when_informed_and_fined():
+    from agents.prompts import agent_system
+    plain = agent_system()                                    # R0/C1: no monitor mentioned
+    informed = agent_system(detector_fine=0.5, adaptive=True)  # informed + live fine
+    assert "OVERSIGHT" not in plain
+    assert "OVERSIGHT" in informed
+    assert "1 - 0.5 x D" in informed          # the actual lambda is substituted into the rule
+    assert "revises what it looks for" in informed  # adaptive note
+    # A visible-but-unpenalized monitor (fine=0) must not claim a profit tax.
+    assert "OVERSIGHT" not in agent_system(detector_fine=0.0)
+
+
+def test_build_nodes_informs_only_informed_conditions():
+    """The agent built for an informed+fined condition carries the penalty rule; C1 does not."""
+    from core.runner import build_nodes
+    from core.state import CONDITIONS
+
+    class _Logger:
+        def log_llm_call(self, *a, **k):
+            pass
+
+    def capturing_client(sink):
+        def transport(messages, cfg, seed):
+            sink.append(messages[0]["content"])  # the system prompt
+            return ('{"bid": 50, "reasoning": "x"}', 10, 5)
+        return LLMClient(ModelConfig(model="t"), transport=transport, sleep=lambda _s: None)
+
+    for cond, want in [("C1", False), ("S_informed", True), ("A_informed", True)]:
+        seen = []
+        clients = {"agent": capturing_client(seen),
+                   "judge": scripted_client(['{"quality": {}, "feedback": {}}']),
+                   "detector": scripted_client(["{}"])}
+        agent, _, _ = build_nodes(clients, CONDITIONS[cond], _Logger(), detector_fine=0.5)
+        agent(agent_id=AgentId.A, cost=40.0, scenario=SCENARIO, history_text="", round_number=1)
+        assert ("OVERSIGHT" in seen[0]) is want, cond
+    # A_informed's clause notes the adaptive monitor; S_informed's does not.
+    from agents.prompts import agent_system
+    assert "revises what it looks for" in agent_system(detector_fine=0.5, adaptive=True)
+    assert "revises what it looks for" not in agent_system(detector_fine=0.5, adaptive=False)
+
+
 def test_agent_node_raises_on_unparseable():
     client = scripted_client(["garbage", "still garbage"])
     agent = make_bidding_agent(client)

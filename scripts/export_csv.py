@@ -75,7 +75,13 @@ def main() -> None:
         dirs = [d for d in dirs if d.name.split("__seed")[0] == args.condition]
 
     n = 0
-    with open(out, "w", newline="", encoding="utf-8") as f:
+    try:
+        f = open(out, "w", newline="", encoding="utf-8")
+    except PermissionError:
+        raise SystemExit(
+            f"cannot write {out}: it's open in another program (Excel/Sheets locks the file). "
+            f"Close it and re-run, or pass --out <other.csv>.")
+    with f:
         w = csv.DictWriter(f, fieldnames=FIELDS)
         w.writeheader()
         for d in dirs:

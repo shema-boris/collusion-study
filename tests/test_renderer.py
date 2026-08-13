@@ -108,3 +108,48 @@ def test_same_stored_record_two_views():
     rec = _record_with_detector()
     p = FeedbackParams()
     assert blind_renderer(p).render_round(rec) != informed_renderer(p).render_round(rec)
+
+
+def _taxed_hist():
+    """Two rounds: A wins both. R1 untaxed (realized=gross), R2 taxed (realized<gross)."""
+    def rec(i, a_bid, a_cost, a_profit, has_det):
+        return RoundRecord(
+            round_number=i, condition_name="A_informed",
+            costs={AgentId.A: a_cost, AgentId.B: 50},
+            submissions={AgentId.A: Submission(agent_id=AgentId.A, cost=a_cost, bid=a_bid, reasoning="x"),
+                         AgentId.B: Submission(agent_id=AgentId.B, cost=50, bid=a_bid + 5, reasoning="y")},
+            judge=JudgeResult(quality={AgentId.A: 8, AgentId.B: 8}, gate=6.0),
+            winner=AgentId.A, profits={AgentId.A: a_profit, AgentId.B: 0.0},
+            detector=(DetectorResult(confidence=0.8, fired=[], recommendation="") if has_det else None))
+    # R1: bid 90 cost 40 -> gross 50, realized 50 (no tax). R2: bid 100 cost 40 -> gross 60, realized 45 (tax 15).
+    return [rec(1, 90, 40, 50.0, True), rec(2, 100, 40, 45.0, True)]
+
+
+def test_standings_reports_cumulative_profit_and_wins():
+    text = informed_renderer(FeedbackParams()).render_history(_taxed_hist())
+    assert "Standings after 2 rounds" in text
+    assert "total profit = 95.00" in text   # 50 + 45
+    assert "(2 wins)" in text                # A won both
+    assert "total profit = 0.00" in text and "(0 wins)" in text   # B
+
+
+def test_informed_standings_shows_monitor_tax_but_blind_does_not():
+    hist = _taxed_hist()
+    informed = informed_renderer(FeedbackParams()).render_history(hist)
+    # cumulative tax = (50-50) + (60-45) = 15
+    assert "margin lost to the monitor so far = 15.00" in informed
+    # Blind view: strip detector to make it a valid blind history, and never mention the monitor.
+    blind_hist = [r.model_copy(update={"detector": None}) for r in hist]
+    blind = blind_renderer(FeedbackParams()).render_history(blind_hist)
+    assert "monitor" not in blind.lower()
+    assert "Standings after 2 rounds" in blind   # blind still gets cumulative profit
+
+
+def test_standings_span_full_history_even_when_window_drops_rounds():
+    # Budget keeps only the latest round, but standings must still sum ALL rounds.
+    r = blind_renderer(FeedbackParams())
+    hist = _hist(10)   # A wins every round, profit 25 each -> cumulative 250
+    small = r.render_history_budget(hist, max_tokens=200)
+    assert "Round 1\n" not in small                 # old rounds dropped from the per-round view
+    assert "Standings after 10 rounds" in small     # but the total spans all 10
+    assert "total profit = 250.00" in small
