@@ -1,11 +1,13 @@
-"""Structural-collusion figures (the v3 headline findings).
+"""Structural figures for the v3 runs.
 
 Three figures, written to figures/:
   1. structure_cost_response.png -- actual markup vs the Bayes-Nash competitive markup, per
-     condition. R0 tracks it (cost-responsive competition); the history cells go flat
-     (cost-insensitive fixed markup). The structural signature.
-  2. structure_markup_over_rounds.png -- mean markup per round. R0 stays high; the history
-     cells sit low and settle -- convergence emerges only with a shared record.
+     condition. R0's markup tracks it (slope ~1); the history cells respond much more weakly
+     (slope ~0.25). NOTE: the history markups are NOT constant -- they are noisy (see
+     plot_margin_raw.py); this figure is about how much the markup RESPONDS to cost, not level.
+  2. structure_markup_over_rounds.png -- 5-round mean markup. R0 runs high (~$28) on average;
+     the history cells run lower (~$14) on average, but individual margins stay noisy (this is a
+     rolling mean; it is NOT a convergence -- see plot_margin_raw.py for the raw per-round spread).
   3. structure_null_and_falsepos.png -- (L) price above competitive ~0 everywhere (no
      supra-competitive pricing) yet (R) the detector flags the informed cells at ~0.7.
 
@@ -88,12 +90,12 @@ def fig_cost_response(runs_root, out):
                 bbox=dict(boxstyle="round,pad=0.3", fc="white", ec=GRID, alpha=0.85))
         _style(ax, "Competitive markup  (cost_high − cost)/2,  $",
                "Actual markup  (bid − cost),  $", "")
-    fig.suptitle("Shared history flattens the bid–cost relationship "
-                 "(slope 1 = cost-responsive competition; slope 0 = fixed markup)",
+    fig.suptitle("R0's markup tracks the competitive cost relationship; "
+                 "the history cells respond to cost much more weakly",
                  color=INK, fontsize=12, x=0.02, ha="left")
-    fig.text(0.5, 0.005, "Dashed line = pure Bayes–Nash competition (y = x). "
-             "R0 runs parallel to it; the history cells collapse toward flat.",
-             ha="center", color=MUTED, fontsize=9)
+    fig.text(0.5, 0.005, "Dashed line = pure Bayes–Nash competition (y = x). R0 runs parallel "
+             "to it (slope ~1); the history cells respond weakly to cost (slope ~0.25). "
+             "Markups are noisy, not constant.", ha="center", color=MUTED, fontsize=9)
     fig.tight_layout(rect=(0, 0.02, 1, 0.96))
     fig.savefig(out / "structure_cost_response.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -125,7 +127,8 @@ def fig_markup_over_rounds(runs_root, out):
     # colliding end-labels; R0 is the one clearly separated line up top.
     ax.legend(frameon=False, labelcolor=INK, loc="upper right", ncol=2, fontsize=9)
     _style(ax, "Round", "Mean markup  (bid − cost),  $  [5-round rolling mean]",
-           "Markup over rounds: history compresses margins and settles; R0 stays high")
+           "Markup over rounds (5-round mean): history runs lower than R0 on average, "
+           "but stays noisy (not a convergence)")
     fig.savefig(out / "structure_markup_over_rounds.png", dpi=150, bbox_inches="tight")
     plt.close(fig)
 

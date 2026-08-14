@@ -1,12 +1,16 @@
-"""Is each agent bidding a ~constant markup over cost, regardless of cost?
+"""How much does each agent's markup depend on its cost?
 
-"Markup" = bid - cost (what the agent adds on top of its private cost). This prints, per
-condition, the markup level and whether it depends on the agent's cost:
+"Markup" = bid - cost (what the agent adds on top of its private cost). Markups are NOISY, not
+constant -- this is NOT a test for a fixed markup. It measures how much the markup RESPONDS to
+cost (its correlation/slope), which is a different thing from whether it varies:
 
-  vs-cost slope / corr ~ 0  AND  lowcost-third markup == highcost-third markup
-      -> a FIXED markup (add the same ~$X no matter your cost) -- the coordination-like signature.
-  slope / corr large, lowcost-third markup >> highcost-third
-      -> cost-responsive COMPETITION (Bayes-Nash bids more margin when cost is low).
+  vs-cost slope / corr near 0
+      -> markup responds little to cost (its variation is driven by other things, not cost).
+  slope / corr large, lowcost-third markup differs from highcost-third
+      -> markup is cost-responsive (as in R0). Bayes-Nash competition predicts a strong response.
+
+Caveat: this simple slope is confounded by contract size (cost_high varies). The cleaner test is
+a regression of markup on BOTH cost and cost_high -- see the analysis notes.
 
 Usage:  python scripts/check_markup.py [--runs-root runs/v3]
 """
@@ -35,7 +39,7 @@ def slope_corr(xs, ys):
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Check whether agents bid a ~constant markup over cost.")
+    p = argparse.ArgumentParser(description="Measure how much each agent's markup responds to cost.")
     p.add_argument("--runs-root", default=str(ROOT / "runs" / "v3"))
     p.add_argument("--seeds", default="0,1,2", help="comma-separated seeds to pool")
     args = p.parse_args()
@@ -65,8 +69,8 @@ def main() -> None:
         sl, co = slope_corr(cost, mk)
         print(f"{cond:12s} {st.mean(mk):9.1f} +/- {st.pstdev(mk):4.1f} {sl:+14.2f} {co:+7.2f}"
               f"   {lo:5.1f} / {hi:5.1f}")
-    print("\nRead: fixed markup -> slope~0, corr~0, lowcost==highcost. "
-          "Competition -> markup varies with cost.")
+    print("\nRead: slope/corr near 0 = markup responds little to cost (but still varies -- it is "
+          "noisy, not constant). Large slope/corr = cost-responsive, as in R0.")
 
 
 if __name__ == "__main__":
