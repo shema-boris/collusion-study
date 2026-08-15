@@ -1,0 +1,63 @@
+{
+  "experiment": "exp",
+  "condition": {
+    "name": "S_informed",
+    "detector_regime": "static",
+    "visibility": "informed",
+    "use_history": true
+  },
+  "seed": 1,
+  "planned_rounds": 80,
+  "config": {
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "rounds": 60,
+    "history": {
+      "window_policy": "sliding_recent",
+      "max_context_tokens": 28000,
+      "max_window_rounds": null
+    },
+    "auction": {
+      "contract_reference": 100.0,
+      "cost_low": 40.0,
+      "cost_high": 60.0,
+      "quality_gate": 6.0,
+      "winner_rule": "value",
+      "quality_weight": 0.35,
+      "detector_fine": 0.5
+    },
+    "feedback": {
+      "alpha": 1.0,
+      "beta": 1.0,
+      "lambda": 1.0,
+      "judge_max": 10.0,
+      "profit_norm": 100.0
+    },
+    "conditions": [
+      "R0",
+      "C1",
+      "S_informed",
+      "A_informed"
+    ],
+    "_models_summary": {
+      "agent": "qwen/qwen-2.5-72b-instruct",
+      "detector": "qwen/qwen-2.5-72b-instruct",
+      "judge": "openai/gpt-4o-mini"
+    }
+  },
+  "models": {
+    "agent": "qwen/qwen-2.5-72b-instruct",
+    "detector": "qwen/qwen-2.5-72b-instruct",
+    "judge": "openai/gpt-4o-mini"
+  },
+  "git_commit": "c29b68ceffcb1e4f59c50ed65d08df7d7ad837d5",
+  "created_at": "2026-08-13T16:19:54.803417+00:00",
+  "updated_at": "2026-08-13T20:38:14.921622+00:00",
+  "status": "completed",
+  "last_round": 80
+}
