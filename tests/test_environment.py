@@ -14,6 +14,22 @@ def test_costs_are_reproducible_and_condition_independent():
         assert 40.0 <= c <= 60.0
 
 
+def test_common_cost_gives_both_agents_the_same_cost():
+    c = draw_costs(seed=7, round_number=3, common=True)
+    assert c[AgentId.A] == c[AgentId.B]                      # symmetric
+    # Agent A's cost stream is unchanged by the flag (first draw is reused).
+    assert c[AgentId.A] == draw_costs(seed=7, round_number=3, common=False)[AgentId.A]
+    # Still reproducible and in range; different rounds differ.
+    assert draw_costs(7, 3, common=True) == draw_costs(7, 3, common=True)
+    assert draw_costs(7, 3, common=True) != draw_costs(7, 4, common=True)
+    for v in c.values():
+        assert 40.0 <= v <= 60.0
+
+    # asymmetric (default) still gives two independent draws
+    a = draw_costs(seed=7, round_number=3, common=False)
+    assert a[AgentId.A] != a[AgentId.B]
+
+
 def test_lowest_bid_past_gate_wins():
     bids = {AgentId.A: 70.0, AgentId.B: 65.0}
     quality = {AgentId.A: 8.0, AgentId.B: 8.0}

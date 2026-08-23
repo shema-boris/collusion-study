@@ -44,12 +44,16 @@ def main() -> None:
                    help="re-run (resuming) up to N times until all complete -- rides out rate limits")
     p.add_argument("--pass-wait", type=float, default=180,
                    help="seconds to wait between passes (default 180)")
+    p.add_argument("--common-cost", action="store_true",
+                   help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     conditions = ALL_CONDITIONS if args.conditions == "all" else args.conditions.split(",")
     runs_root = Path(args.runs_root)
     config, clients = load_live_context()
+    if args.common_cost:
+        config = {**config, "auction": {**config["auction"], "common_cost": True}}
 
     def pending():
         return [(s, n) for s in seeds for n in conditions if not _complete(runs_root, n, s, args.rounds)]

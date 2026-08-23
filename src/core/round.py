@@ -56,6 +56,7 @@ def run_round(
     detector_fine: float = 0.0,
     cost_low: float = 40.0,
     cost_high: float = 60.0,
+    common_cost: bool = False,
 ) -> RoundRecord:
     """Run one auction round, append its record to ``state.history``, and return it."""
     cond: Condition = state.condition
@@ -68,8 +69,9 @@ def run_round(
     lo = scenario.cost_low if scenario is not None else cost_low
     hi = scenario.cost_high if scenario is not None else cost_high
 
-    # 1. Costs -- seeded by (seed, round) only, so identical across conditions.
-    costs = draw_costs(state.seed, r, lo, hi)
+    # 1. Costs -- seeded by (seed, round) only, so identical across conditions. common_cost=True
+    #    gives both agents the SAME cost (symmetric; removes the cost-asymmetry barrier, §coord).
+    costs = draw_costs(state.seed, r, lo, hi, common=common_cost)
 
     # 2. History view -- rendered per condition (leak prevention, DESIGN.md §7).
     if cond.use_history and state.history:

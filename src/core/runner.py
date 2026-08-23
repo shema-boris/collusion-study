@@ -87,6 +87,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     winner_rule = auction.get("winner_rule", "lowest_bid")
     quality_weight = auction.get("quality_weight", 0.0)
     detector_fine = auction.get("detector_fine", 0.0)
+    common_cost = bool(auction.get("common_cost", False))
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -117,7 +118,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
                                     history_window=history_window, max_context_tokens=max_context_tokens,
                                     winner_rule=winner_rule, quality_weight=quality_weight,
-                                    detector_fine=detector_fine)
+                                    detector_fine=detector_fine, common_cost=common_cost)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
@@ -175,9 +176,13 @@ def main(argv=None) -> None:
                    help="override contract reference value (base from config); for sweeps")
     p.add_argument("--cost-low", type=float, default=None, help="override cost lower bound")
     p.add_argument("--cost-high", type=float, default=None, help="override cost upper bound")
+    p.add_argument("--common-cost", action="store_true",
+                   help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context()
+    if args.common_cost:
+        config = {**config, "auction": {**config["auction"], "common_cost": True}}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,
                   experiment=args.experiment, resume=args.resume, window=args.window,

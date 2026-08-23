@@ -25,13 +25,20 @@ def _substreams(seed: int, round_number: int) -> tuple[np.random.Generator, np.r
 
 
 def draw_costs(seed: int, round_number: int,
-               cost_low: float = 40.0, cost_high: float = 60.0) -> dict[AgentId, float]:
-    """Private costs for both agents. Deterministic in (seed, round_number)."""
+               cost_low: float = 40.0, cost_high: float = 60.0,
+               *, common: bool = False) -> dict[AgentId, float]:
+    """Costs for both agents. Deterministic in (seed, round_number).
+
+    ``common=False`` (default): each agent draws its own private cost (asymmetric, the main
+    design). ``common=True``: a single cost is drawn and assigned to BOTH agents (symmetric,
+    common-knowledge-after-the-fact) -- removes the cost-asymmetry barrier to coordination and
+    makes the competitive prediction Bertrand (price -> cost, zero margin). The first draw is
+    used, so toggling ``common`` does not shift agent A's cost stream.
+    """
     cost_rng, _ = _substreams(seed, round_number)
-    return {
-        AgentId.A: float(cost_rng.uniform(cost_low, cost_high)),
-        AgentId.B: float(cost_rng.uniform(cost_low, cost_high)),
-    }
+    a = float(cost_rng.uniform(cost_low, cost_high))
+    b = a if common else float(cost_rng.uniform(cost_low, cost_high))
+    return {AgentId.A: a, AgentId.B: b}
 
 
 def select_winner(seed: int, round_number: int,
