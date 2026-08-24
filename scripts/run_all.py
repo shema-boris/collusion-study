@@ -46,14 +46,21 @@ def main() -> None:
                    help="seconds to wait between passes (default 180)")
     p.add_argument("--common-cost", action="store_true",
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
+    p.add_argument("--quality-weight", type=float, default=None,
+                   help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     conditions = ALL_CONDITIONS if args.conditions == "all" else args.conditions.split(",")
     runs_root = Path(args.runs_root)
     config, clients = load_live_context()
-    if args.common_cost:
-        config = {**config, "auction": {**config["auction"], "common_cost": True}}
+    if args.common_cost or args.quality_weight is not None:
+        auction = {**config["auction"]}
+        if args.common_cost:
+            auction["common_cost"] = True
+        if args.quality_weight is not None:
+            auction["quality_weight"] = args.quality_weight
+        config = {**config, "auction": auction}
 
     def pending():
         return [(s, n) for s in seeds for n in conditions if not _complete(runs_root, n, s, args.rounds)]

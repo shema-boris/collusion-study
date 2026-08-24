@@ -178,11 +178,18 @@ def main(argv=None) -> None:
     p.add_argument("--cost-high", type=float, default=None, help="override cost upper bound")
     p.add_argument("--common-cost", action="store_true",
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
+    p.add_argument("--quality-weight", type=float, default=None,
+                   help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context()
-    if args.common_cost:
-        config = {**config, "auction": {**config["auction"], "common_cost": True}}
+    if args.common_cost or args.quality_weight is not None:
+        auction = {**config["auction"]}
+        if args.common_cost:
+            auction["common_cost"] = True
+        if args.quality_weight is not None:
+            auction["quality_weight"] = args.quality_weight
+        config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,
                   experiment=args.experiment, resume=args.resume, window=args.window,
