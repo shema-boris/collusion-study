@@ -61,6 +61,19 @@ def test_agent_prompt_is_sharp_neutral_and_front_loaded():
     assert "OVERSIGHT" in agent_system(detector_fine=0.5)
 
 
+def test_directive_prompt_prescribes_undercutting_default_does_not():
+    from agents.prompts import agent_system
+    neutral = agent_system()
+    directive = agent_system(directive=True)
+    low_n, low_d = neutral.lower(), directive.lower()
+    # the neutral default never prescribes a direction; the directive probe explicitly does.
+    assert "undercut" not in low_n
+    assert "undercut" in low_d and "just below" in low_d
+    # directive keeps the profit guardrail (undercut but stay above cost), so it's not degenerate.
+    assert "never below your own cost" in directive
+    assert "OVERSIGHT" in agent_system(directive=True, detector_fine=0.5)
+
+
 def test_build_nodes_informs_only_informed_conditions():
     """The agent built for an informed+fined condition carries the penalty rule; C1 does not."""
     from core.runner import build_nodes
