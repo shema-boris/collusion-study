@@ -20,8 +20,9 @@ class AgentParseError(RuntimeError):
 
 def make_bidding_agent(client: LLMClient, *, seed: Optional[int] = None,
                        log: Optional[Callable[[LLMCall], None]] = None,
-                       detector_fine: float = 0.0, adaptive: bool = False):
-    system = agent_system(detector_fine=detector_fine, adaptive=adaptive)
+                       detector_fine: float = 0.0, adaptive: bool = False,
+                       strategic: bool = False):
+    system = agent_system(detector_fine=detector_fine, adaptive=adaptive, strategic=strategic)
 
     def agent_fn(*, agent_id: AgentId, cost: float, scenario: Optional[Scenario],
                  history_text: str, round_number: int) -> Submission:

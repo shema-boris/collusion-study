@@ -45,6 +45,22 @@ def test_agent_system_states_penalty_only_when_informed_and_fined():
     assert "OVERSIGHT" not in agent_system(detector_fine=0.0)
 
 
+def test_strategic_prompt_reframes_without_prescribing_direction():
+    from agents.prompts import agent_system
+    default = agent_system()
+    strat = agent_system(strategic=True)
+    # default carries the moderate-margin steer; strategic drops it and foregrounds the game.
+    assert "high enough for a margin" in default
+    assert "high enough for a margin" not in strat
+    assert "submitted simultaneously" in strat and "loser earns nothing" in strat
+    # neutral: never prescribes competing OR colluding in either variant.
+    for p in (default, strat):
+        low = p.lower()
+        assert "undercut" not in low and "collud" not in low and "cooperate" not in low
+    # strategic framing composes with the informed oversight clause.
+    assert "OVERSIGHT" in agent_system(strategic=True, detector_fine=0.5)
+
+
 def test_build_nodes_informs_only_informed_conditions():
     """The agent built for an informed+fined condition carries the penalty rule; C1 does not."""
     from core.runner import build_nodes

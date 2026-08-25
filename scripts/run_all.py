@@ -48,18 +48,22 @@ def main() -> None:
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     p.add_argument("--quality-weight", type=float, default=None,
                    help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
+    p.add_argument("--strategic-prompt", action="store_true",
+                   help="use the strategic-framing agent prompt (direction-neutral A/B vs default)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     conditions = ALL_CONDITIONS if args.conditions == "all" else args.conditions.split(",")
     runs_root = Path(args.runs_root)
     config, clients = load_live_context()
-    if args.common_cost or args.quality_weight is not None:
+    if args.common_cost or args.quality_weight is not None or args.strategic_prompt:
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
         if args.quality_weight is not None:
             auction["quality_weight"] = args.quality_weight
+        if args.strategic_prompt:
+            auction["strategic_prompt"] = True
         config = {**config, "auction": auction}
 
     def pending():

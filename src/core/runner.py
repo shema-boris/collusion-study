@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
-                detector_fine: float = 0.0):
+                detector_fine: float = 0.0, strategic: bool = False):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
     # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
     # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
@@ -36,7 +36,7 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
                   and condition.detector_regime is not DetectorRegime.NONE else 0.0)
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
     agent = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
-                               detector_fine=agent_fine, adaptive=adaptive)
+                               detector_fine=agent_fine, adaptive=adaptive, strategic=strategic)
     judge = make_judge(clients["judge"], log=logger.log_llm_call)
     detector = None
     if condition.detector_regime is not DetectorRegime.NONE:
@@ -88,6 +88,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     quality_weight = auction.get("quality_weight", 0.0)
     detector_fine = auction.get("detector_fine", 0.0)
     common_cost = bool(auction.get("common_cost", False))
+    strategic_prompt = bool(auction.get("strategic_prompt", False))
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -108,7 +109,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                   models=models, experiment=experiment)
         state = ExperimentState(condition=condition, seed=seed)
 
-    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine)
+    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, strategic_prompt)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1
@@ -180,15 +181,19 @@ def main(argv=None) -> None:
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     p.add_argument("--quality-weight", type=float, default=None,
                    help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
+    p.add_argument("--strategic-prompt", action="store_true",
+                   help="use the strategic-framing agent prompt (direction-neutral A/B vs default)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context()
-    if args.common_cost or args.quality_weight is not None:
+    if args.common_cost or args.quality_weight is not None or args.strategic_prompt:
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
         if args.quality_weight is not None:
             auction["quality_weight"] = args.quality_weight
+        if args.strategic_prompt:
+            auction["strategic_prompt"] = True
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,
