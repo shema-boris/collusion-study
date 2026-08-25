@@ -103,9 +103,9 @@ def run_round(
     if winner_rule == "value":
         reference = scenario.reference_value if scenario is not None else 100.0
         winner = select_winner(state.seed, r, bids, judge.quality, gate,
-                               quality_weight=quality_weight, reference=reference)
+                               quality_weight=quality_weight, reference=reference, costs=costs)
     else:
-        winner = select_winner(state.seed, r, bids, judge.quality, gate)
+        winner = select_winner(state.seed, r, bids, judge.quality, gate, costs=costs)
 
     record = RoundRecord(
         round_number=r, condition_name=cond.name, scenario=scenario,

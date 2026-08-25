@@ -44,7 +44,8 @@ def draw_costs(seed: int, round_number: int,
 def select_winner(seed: int, round_number: int,
                   bids: dict[AgentId, float], quality: dict[AgentId, float],
                   gate: float, *, quality_weight: float = 0.0,
-                  reference: float = 100.0) -> Optional[AgentId]:
+                  reference: float = 100.0,
+                  costs: Optional[dict[AgentId, float]] = None) -> Optional[AgentId]:
     """Winner among submissions clearing the quality gate (DESIGN.md §2.1).
 
     Best-value (MEAT) score, higher wins:
@@ -53,8 +54,15 @@ def select_winner(seed: int, round_number: int,
     ``1 - quality_weight`` and quality ``quality_weight`` (so quality_weight < 0.5 keeps price
     dominant). ``quality_weight = 0`` reduces to pure lowest-bid. Returns None if neither clears
     the gate; ties are broken by the round's tie-break stream.
+
+    ``costs``: if given, a bid only wins if it is STRICTLY above that agent's cost (a positive
+    margin). A bid at or below cost earns no profit, so it cannot win -- it loses to any rival
+    bidding above cost, and if NEITHER bids above cost there is no award (winner = None, both earn
+    zero). This makes bidding down to cost a losing move, so agents keep a positive margin rather
+    than racing to the Bertrand floor.
     """
-    passers = [a for a in bids if quality[a] >= gate]
+    passers = [a for a in bids
+               if quality[a] >= gate and (costs is None or bids[a] > costs[a])]
     if not passers:
         return None
     if quality_weight <= 0.0:

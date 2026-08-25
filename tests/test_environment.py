@@ -57,6 +57,24 @@ def test_tie_break_is_deterministic_in_seed_round():
     assert w1 == w2 and w1 in (AgentId.A, AgentId.B)
 
 
+def test_bid_at_cost_cannot_win():
+    q = {AgentId.A: 8.0, AgentId.B: 8.0}
+    # Both bid exactly at their (common) cost -> zero margin -> no award.
+    both_at_cost = select_winner(0, 1, {AgentId.A: 50.0, AgentId.B: 50.0}, q, gate=6.0,
+                                 costs={AgentId.A: 50.0, AgentId.B: 50.0})
+    assert both_at_cost is None
+    # B bids at cost (excluded); A bids ABOVE cost -> A wins even though its bid is higher.
+    a_above = select_winner(0, 1, {AgentId.A: 70.0, AgentId.B: 46.0}, q, gate=6.0,
+                            costs={AgentId.A: 46.0, AgentId.B: 46.0})
+    assert a_above == AgentId.A
+    # Both above cost -> normal lowest-bid wins.
+    normal = select_winner(0, 1, {AgentId.A: 55.0, AgentId.B: 52.0}, q, gate=6.0,
+                           costs={AgentId.A: 46.0, AgentId.B: 46.0})
+    assert normal == AgentId.B
+    # Backward compatible: without costs, an at-cost bid can still win (old behavior).
+    assert select_winner(0, 1, {AgentId.A: 70.0, AgentId.B: 46.0}, q, gate=6.0) == AgentId.B
+
+
 def test_profits_winner_takes_margin_loser_zero():
     bids = {AgentId.A: 90.0, AgentId.B: 88.0}
     costs = {AgentId.A: 50.0, AgentId.B: 52.0}
