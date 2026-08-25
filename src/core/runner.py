@@ -60,21 +60,29 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
         runs_root, experiment: str = "exp", resume: bool = False,
         scenario_repo: Optional[ScenarioRepository] = None,
         reference: Optional[float] = None, cost_low: Optional[float] = None,
-        cost_high: Optional[float] = None, window: Optional[int] = None):
+        cost_high: Optional[float] = None, window: Optional[int] = None,
+        pin_scenario: Optional[int] = None):
     """Run one (condition, seed) for `rounds` rounds. Returns the run directory.
 
     Economics live on the scenarios (committed bank), so each round's regime is logged in its
     RoundRecord. The economics are NOT fixed (DESIGN.md §2, §3, §11): pass `reference`,
     `cost_low`, `cost_high` to REWRITE the scenarios' economics uniformly for this run (a
-    convenient sweep knob); the override is recorded in the manifest.
+    convenient sweep knob); the override is recorded in the manifest. ``pin_scenario`` (a 1-based
+    bank index) uses the SAME contract every round -- combined with the economics overrides this
+    makes a fully STATIONARY market (byte-for-byte identical rounds, cf. Fish et al.).
     """
     repo = scenario_repo or ScenarioRepository.load(ROOT / "configs" / "scenarios.yaml")
 
-    # Walk the bank in a seeded permutation so economics don't climb with the round index
-    # (the bank is sorted). Order depends on seed only -> shared across conditions, varies by
-    # seed. `scenario_order: sequential` in config restores the raw round-N -> scenario-N map.
-    shuffle = config.get("scenario_order", "shuffled") != "sequential"
-    base_provider = repo.ordered_provider(seed, shuffle=shuffle)
+    if pin_scenario is not None:
+        pinned = repo.get(int(pin_scenario))          # same contract every round (stationary market)
+        base_provider = lambda r: pinned              # noqa: E731
+        config = {**config, "_pin_scenario": int(pin_scenario)}
+    else:
+        # Walk the bank in a seeded permutation so economics don't climb with the round index
+        # (the bank is sorted). Order depends on seed only -> shared across conditions, varies by
+        # seed. `scenario_order: sequential` in config restores the raw round-N -> scenario-N map.
+        shuffle = config.get("scenario_order", "shuffled") != "sequential"
+        base_provider = repo.ordered_provider(seed, shuffle=shuffle)
 
     overrides = {}
     if reference is not None:
@@ -209,6 +217,9 @@ def main(argv=None) -> None:
                    help="override contract reference value (base from config); for sweeps")
     p.add_argument("--cost-low", type=float, default=None, help="override cost lower bound")
     p.add_argument("--cost-high", type=float, default=None, help="override cost upper bound")
+    p.add_argument("--pin-scenario", type=int, default=None,
+                   help="use the SAME contract (1-based bank index) every round -- with fixed "
+                        "economics this makes a fully stationary market (identical rounds)")
     p.add_argument("--common-cost", action="store_true",
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     p.add_argument("--quality-weight", type=float, default=None,
@@ -254,7 +265,8 @@ def main(argv=None) -> None:
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,
                   experiment=args.experiment, resume=args.resume, window=args.window,
-                  reference=args.reference, cost_low=args.cost_low, cost_high=args.cost_high)
+                  reference=args.reference, cost_low=args.cost_low, cost_high=args.cost_high,
+                  pin_scenario=args.pin_scenario)
     print(f"done -> {run_dir}")
 
 
