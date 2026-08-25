@@ -35,8 +35,17 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
     agent_fine = (detector_fine if condition.visibility is Visibility.INFORMED
                   and condition.detector_regime is not DetectorRegime.NONE else 0.0)
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
-    agent = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
-                               detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+    agent_a = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
+                                 detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+    # Heterogeneous agents: B uses clients["agent_b"] if present (different model), else the same
+    # model as A. Both share the identical prompt -- only the underlying model differs.
+    b_client = clients.get("agent_b", clients["agent"])
+    agent_b = make_bidding_agent(b_client, log=logger.log_llm_call,
+                                 detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+
+    def agent(*, agent_id, **kw):  # route each slot to its own model
+        return (agent_a if agent_id is AgentId.A else agent_b)(agent_id=agent_id, **kw)
+
     judge = make_judge(clients["judge"], log=logger.log_llm_call)
     detector = None
     if condition.detector_regime is not DetectorRegime.NONE:
@@ -145,14 +154,17 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
 
 
 def load_live_context(agent_model: Optional[str] = None,
-                      agent_max_tokens: Optional[int] = None) -> tuple[dict, dict]:
+                      agent_max_tokens: Optional[int] = None,
+                      agent_b_model: Optional[str] = None) -> tuple[dict, dict]:
     """Load .env + configs and build live OpenRouter clients. Shared by the CLI and batch runner.
 
     ``agent_model`` overrides the agent's model slug (for the model-swap experiment); it does NOT
     touch the judge or detector. ``agent_max_tokens`` raises the agent's reply budget -- reasoning
     models (QwQ, R1) emit a long chain-of-thought and truncate at the default 1024, so bump it
-    (~4000-8000) when swapping one in. The dotenv import is soft so the package still works when
-    python-dotenv isn't installed.
+    (~4000-8000) when swapping one in. ``agent_b_model`` gives Agent B a DIFFERENT model from A
+    (heterogeneous agents) -- the control that removes the same-model homogeneity confound; unset
+    -> both agents share one model (current behavior). The dotenv import is soft so the package
+    still works when python-dotenv isn't installed.
     """
     try:
         from dotenv import load_dotenv
@@ -168,6 +180,8 @@ def load_live_context(agent_model: Optional[str] = None,
         models_cfg["agent"]["model"] = agent_model
     if agent_max_tokens:
         models_cfg["agent"]["max_tokens"] = agent_max_tokens
+    if agent_b_model:  # heterogeneous: B copies A's config with a different model slug
+        models_cfg["agent_b"] = {**models_cfg["agent"], "model": agent_b_model}
     config["_models_summary"] = {role: models_cfg[role]["model"] for role in models_cfg}
     return config, clients_from_config(models_cfg)
 
@@ -197,10 +211,14 @@ def main(argv=None) -> None:
                    help="override the AGENT model slug (model-swap experiment), e.g. qwen/qwq-32b")
     p.add_argument("--agent-max-tokens", type=int, default=None,
                    help="raise the agent reply budget (bump to ~4000-8000 for reasoning models)")
+    p.add_argument("--agent-b-model", default=None,
+                   help="give Agent B a DIFFERENT model (heterogeneous control), e.g. "
+                        "--agent-model qwen/... --agent-b-model meta-llama/llama-3.3-70b-instruct")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
-                                        agent_max_tokens=args.agent_max_tokens)
+                                        agent_max_tokens=args.agent_max_tokens,
+                                        agent_b_model=args.agent_b_model)
     if args.common_cost or args.quality_weight is not None or args.directive_prompt:
         auction = {**config["auction"]}
         if args.common_cost:
