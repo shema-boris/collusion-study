@@ -120,10 +120,12 @@ class Scenario(BaseModel):
 
     @model_validator(mode="after")
     def _check_economics(self):
-        if not (self.cost_low < self.cost_high < self.reference_value):
+        # cost_low == cost_high is allowed: a fixed (degenerate) cost, used to make a STATIONARY
+        # market (same cost every round) for the pricing/collusion replication (cf. Fish et al.).
+        if not (self.cost_low <= self.cost_high < self.reference_value):
             raise ValueError(
-                f"scenario {self.id}: require cost_low < cost_high < reference_value, got "
-                f"{self.cost_low} < {self.cost_high} < {self.reference_value}")
+                f"scenario {self.id}: require cost_low <= cost_high < reference_value, got "
+                f"{self.cost_low} <= {self.cost_high} < {self.reference_value}")
         return self
 
     def render(self) -> str:
