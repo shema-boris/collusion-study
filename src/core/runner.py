@@ -27,7 +27,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
-                detector_fine: float = 0.0, directive: bool = False):
+                detector_fine: float = 0.0, directive: bool = False,
+                market: str = "winner_take_all"):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
     # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
     # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
@@ -35,13 +36,13 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
     agent_fine = (detector_fine if condition.visibility is Visibility.INFORMED
                   and condition.detector_regime is not DetectorRegime.NONE else 0.0)
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
-    agent_a = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
-                                 detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+    agent_a = make_bidding_agent(clients["agent"], log=logger.log_llm_call, detector_fine=agent_fine,
+                                 adaptive=adaptive, directive=directive, market=market)
     # Heterogeneous agents: B uses clients["agent_b"] if present (different model), else the same
     # model as A. Both share the identical prompt -- only the underlying model differs.
     b_client = clients.get("agent_b", clients["agent"])
-    agent_b = make_bidding_agent(b_client, log=logger.log_llm_call,
-                                 detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+    agent_b = make_bidding_agent(b_client, log=logger.log_llm_call, detector_fine=agent_fine,
+                                 adaptive=adaptive, directive=directive, market=market)
 
     def agent(*, agent_id, **kw):  # route each slot to its own model
         return (agent_a if agent_id is AgentId.A else agent_b)(agent_id=agent_id, **kw)
@@ -98,6 +99,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     detector_fine = auction.get("detector_fine", 0.0)
     common_cost = bool(auction.get("common_cost", False))
     directive = bool(auction.get("directive_prompt", False))  # labeled capability probe (not emergent)
+    market = auction.get("market", "winner_take_all")          # or "shared_award" (divisible contract)
+    shared_award_mu = float(auction.get("shared_award_mu", 0.10))
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -118,7 +121,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                   models=models, experiment=experiment)
         state = ExperimentState(condition=condition, seed=seed)
 
-    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive)
+    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive, market)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1
@@ -128,7 +131,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     gate=gate, feedback_params=fb, scenario_provider=scenario_provider,
                                     history_window=history_window, max_context_tokens=max_context_tokens,
                                     winner_rule=winner_rule, quality_weight=quality_weight,
-                                    detector_fine=detector_fine, common_cost=common_cost)
+                                    detector_fine=detector_fine, common_cost=common_cost,
+                                    market=market, shared_award_mu=shared_award_mu)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
@@ -214,12 +218,16 @@ def main(argv=None) -> None:
     p.add_argument("--agent-b-model", default=None,
                    help="give Agent B a DIFFERENT model (heterogeneous control), e.g. "
                         "--agent-model qwen/... --agent-b-model meta-llama/llama-3.3-70b-instruct")
+    p.add_argument("--market", choices=["winner_take_all", "shared_award"], default=None,
+                   help="market mechanism: winner_take_all (default) or shared_award (divisible "
+                        "contract -- both suppliers profit by share; collusion can pay off jointly)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens,
                                         agent_b_model=args.agent_b_model)
-    if args.common_cost or args.quality_weight is not None or args.directive_prompt:
+    if (args.common_cost or args.quality_weight is not None or args.directive_prompt
+            or args.market is not None):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -227,6 +235,8 @@ def main(argv=None) -> None:
             auction["quality_weight"] = args.quality_weight
         if args.directive_prompt:
             auction["directive_prompt"] = True
+        if args.market is not None:
+            auction["market"] = args.market
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,

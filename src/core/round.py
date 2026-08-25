@@ -15,6 +15,7 @@ from typing import Callable, Optional, Protocol
 
 from auction.environment import draw_costs, select_winner
 from auction.payoff import profits as compute_profits
+from auction.payoff import shared_award_profits, shared_award_shares
 from core.state import (
     AgentId, Condition, DetectorRegime, ExperimentState,
     JudgeResult, RoundRecord, Scenario, Submission, Visibility,
@@ -57,6 +58,8 @@ def run_round(
     cost_low: float = 40.0,
     cost_high: float = 60.0,
     common_cost: bool = False,
+    market: str = "winner_take_all",
+    shared_award_mu: float = 0.10,
 ) -> RoundRecord:
     """Run one auction round, append its record to ``state.history``, and return it."""
     cond: Condition = state.condition
@@ -98,10 +101,16 @@ def run_round(
     # 4. Judge scores reasoning quality (the eligibility gate).
     judge = judge_fn(submissions=submissions, scenario=scenario, gate=gate, round_number=r)
 
-    # 5. Winner -- best value (quality-adjusted price) or lowest bid.
+    # 5. Award. winner_take_all: one winner takes the whole contract. shared_award: both suppliers
+    #    win a demand SHARE of a divisible contract (both profit each round), so cooperation is
+    #    jointly beneficial -- the setting where tacit collusion can emerge.
     bids = {a: submissions[a].bid for a in submissions}
-    if winner_rule == "value":
-        reference = scenario.reference_value if scenario is not None else 100.0
+    reference = scenario.reference_value if scenario is not None else 100.0
+    shares = None
+    if market == "shared_award":
+        shares = shared_award_shares(bids, reference, mu=shared_award_mu)
+        winner = max(shares, key=shares.get)   # largest-share supplier, for logging/detector
+    elif winner_rule == "value":
         winner = select_winner(state.seed, r, bids, judge.quality, gate,
                                quality_weight=quality_weight, reference=reference, costs=costs)
     else:
@@ -113,17 +122,20 @@ def run_round(
         judge=judge, winner=winner, profits={}, detector=None,
     )
 
-    # 6. Detector runs BEFORE profit, so its suspicion can tax the winner's margin (DESIGN §5, §8).
+    # 6. Detector runs BEFORE profit, so its suspicion can tax the margin (DESIGN §5, §8).
     if cond.detector_regime is not DetectorRegime.NONE and detector_fn is not None:
         record.detector = detector_fn(state=state, record=record)
     detector_D = record.detector.confidence if record.detector is not None else 0.0
 
-    # 7. Realized profit = (bid - cost) * (1 - detector_fine * D); loser earns 0.
-    #    The penalty applies ONLY where the agent is INFORMED (visible + consequential oversight).
-    #    Blind runs the detector as a silent observer -- no penalty -- so it's a clean control.
+    # 7. Realized profit, taxed by the detector for INFORMED agents (visible + consequential
+    #    oversight); blind runs the detector as a silent observer -- no penalty (clean control).
     fine = detector_fine if cond.visibility is Visibility.INFORMED else 0.0
-    record.profits = compute_profits(bids, costs, winner,
-                                     detector_confidence=detector_D, fine=fine)
+    if market == "shared_award":
+        record.profits = shared_award_profits(bids, costs, shares,
+                                              detector_confidence=detector_D, fine=fine)
+    else:
+        record.profits = compute_profits(bids, costs, winner,
+                                         detector_confidence=detector_D, fine=fine)
 
     state.history.append(record)
     state.round_number = r

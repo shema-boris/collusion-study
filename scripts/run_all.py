@@ -55,6 +55,8 @@ def main() -> None:
                    help="override the AGENT model slug (model-swap experiment), e.g. qwen/qwq-32b")
     p.add_argument("--agent-max-tokens", type=int, default=None,
                    help="raise the agent reply budget (bump to ~4000-8000 for reasoning models)")
+    p.add_argument("--market", choices=["winner_take_all", "shared_award"], default=None,
+                   help="market mechanism: winner_take_all (default) or shared_award (divisible)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
@@ -62,7 +64,8 @@ def main() -> None:
     runs_root = Path(args.runs_root)
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens)
-    if args.common_cost or args.quality_weight is not None or args.directive_prompt:
+    if (args.common_cost or args.quality_weight is not None or args.directive_prompt
+            or args.market is not None):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -70,6 +73,8 @@ def main() -> None:
             auction["quality_weight"] = args.quality_weight
         if args.directive_prompt:
             auction["directive_prompt"] = True
+        if args.market is not None:
+            auction["market"] = args.market
         config = {**config, "auction": auction}
 
     def pending():

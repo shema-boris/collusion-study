@@ -1,5 +1,5 @@
 from auction.environment import draw_costs, select_winner
-from auction.payoff import profits
+from auction.payoff import profits, shared_award_profits, shared_award_shares
 from core.state import AgentId
 
 
@@ -104,3 +104,34 @@ def test_value_rule_quality_tips_close_bids_but_not_overbidding():
     overbid = {AgentId.A: 95.0, AgentId.B: 70.0}
     assert select_winner(0, 1, overbid, quality, gate=6.0,
                          quality_weight=0.35, reference=100.0) == AgentId.B
+
+
+def test_shared_award_lower_bid_gets_bigger_share_both_profit():
+    ref = 100.0
+    # A prices lower than B -> A gets the larger share; both positive, sum < 1 (outside option).
+    shares = shared_award_shares({AgentId.A: 60.0, AgentId.B: 80.0}, ref)
+    assert shares[AgentId.A] > shares[AgentId.B] > 0
+    assert 0 < sum(shares.values()) < 1.0
+    # BOTH suppliers profit each round (unlike winner-take-all).
+    pr = shared_award_profits({AgentId.A: 60.0, AgentId.B: 80.0},
+                              {AgentId.A: 50.0, AgentId.B: 50.0}, shares)
+    assert pr[AgentId.A] > 0 and pr[AgentId.B] > 0
+    # A bid below its cost -> negative profit (share still positive).
+    b = {AgentId.A: 40.0, AgentId.B: 80.0}
+    pr2 = shared_award_profits(b, {AgentId.A: 50.0, AgentId.B: 50.0}, shared_award_shares(b, ref))
+    assert pr2[AgentId.A] < 0
+
+
+def test_shared_award_outside_option_and_fine():
+    ref = 100.0
+    lo = shared_award_shares({AgentId.A: 55.0, AgentId.B: 55.0}, ref)
+    hi = shared_award_shares({AgentId.A: 98.0, AgentId.B: 98.0}, ref)
+    assert sum(hi.values()) < sum(lo.values())                 # high prices -> buyer procures less
+    # The detector fine taxes BOTH suppliers' profit in shared_award.
+    shares = shared_award_shares({AgentId.A: 70.0, AgentId.B: 70.0}, ref)
+    full = shared_award_profits({AgentId.A: 70.0, AgentId.B: 70.0},
+                                {AgentId.A: 50.0, AgentId.B: 50.0}, shares)
+    taxed = shared_award_profits({AgentId.A: 70.0, AgentId.B: 70.0},
+                                 {AgentId.A: 50.0, AgentId.B: 50.0}, shares,
+                                 detector_confidence=0.8, fine=0.5)
+    assert taxed[AgentId.A] < full[AgentId.A] and taxed[AgentId.B] < full[AgentId.B]
