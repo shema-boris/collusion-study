@@ -144,10 +144,15 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     return logger.run_dir
 
 
-def load_live_context() -> tuple[dict, dict]:
+def load_live_context(agent_model: Optional[str] = None,
+                      agent_max_tokens: Optional[int] = None) -> tuple[dict, dict]:
     """Load .env + configs and build live OpenRouter clients. Shared by the CLI and batch runner.
 
-    The dotenv import is soft so the package still works when python-dotenv isn't installed.
+    ``agent_model`` overrides the agent's model slug (for the model-swap experiment); it does NOT
+    touch the judge or detector. ``agent_max_tokens`` raises the agent's reply budget -- reasoning
+    models (QwQ, R1) emit a long chain-of-thought and truncate at the default 1024, so bump it
+    (~4000-8000) when swapping one in. The dotenv import is soft so the package still works when
+    python-dotenv isn't installed.
     """
     try:
         from dotenv import load_dotenv
@@ -159,6 +164,10 @@ def load_live_context() -> tuple[dict, dict]:
 
     config = load_yaml(ROOT / "configs" / "experiment.yaml")
     models_cfg = load_yaml(ROOT / "configs" / "models.yaml")
+    if agent_model:
+        models_cfg["agent"]["model"] = agent_model
+    if agent_max_tokens:
+        models_cfg["agent"]["max_tokens"] = agent_max_tokens
     config["_models_summary"] = {role: models_cfg[role]["model"] for role in models_cfg}
     return config, clients_from_config(models_cfg)
 
@@ -184,9 +193,14 @@ def main(argv=None) -> None:
     p.add_argument("--directive-prompt", action="store_true",
                    help="CAPABILITY PROBE (not emergent): instruct the agent to predict+undercut the "
                         "rival above cost. Prescribes competition -- do not read as spontaneous behavior.")
+    p.add_argument("--agent-model", default=None,
+                   help="override the AGENT model slug (model-swap experiment), e.g. qwen/qwq-32b")
+    p.add_argument("--agent-max-tokens", type=int, default=None,
+                   help="raise the agent reply budget (bump to ~4000-8000 for reasoning models)")
     args = p.parse_args(argv)
 
-    config, clients = load_live_context()
+    config, clients = load_live_context(agent_model=args.agent_model,
+                                        agent_max_tokens=args.agent_max_tokens)
     if args.common_cost or args.quality_weight is not None or args.directive_prompt:
         auction = {**config["auction"]}
         if args.common_cost:

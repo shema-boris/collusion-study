@@ -51,12 +51,17 @@ def main() -> None:
     p.add_argument("--directive-prompt", action="store_true",
                    help="CAPABILITY PROBE (not emergent): instruct the agent to predict+undercut the "
                         "rival above cost. Prescribes competition -- do not read as spontaneous behavior.")
+    p.add_argument("--agent-model", default=None,
+                   help="override the AGENT model slug (model-swap experiment), e.g. qwen/qwq-32b")
+    p.add_argument("--agent-max-tokens", type=int, default=None,
+                   help="raise the agent reply budget (bump to ~4000-8000 for reasoning models)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     conditions = ALL_CONDITIONS if args.conditions == "all" else args.conditions.split(",")
     runs_root = Path(args.runs_root)
-    config, clients = load_live_context()
+    config, clients = load_live_context(agent_model=args.agent_model,
+                                        agent_max_tokens=args.agent_max_tokens)
     if args.common_cost or args.quality_weight is not None or args.directive_prompt:
         auction = {**config["auction"]}
         if args.common_cost:
