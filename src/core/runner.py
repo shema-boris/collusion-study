@@ -27,7 +27,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
-                detector_fine: float = 0.0, directive: bool = False):
+                detector_fine: float = 0.0):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
     # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
     # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
@@ -36,7 +36,7 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
                   and condition.detector_regime is not DetectorRegime.NONE else 0.0)
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
     agent = make_bidding_agent(clients["agent"], log=logger.log_llm_call,
-                               detector_fine=agent_fine, adaptive=adaptive, directive=directive)
+                               detector_fine=agent_fine, adaptive=adaptive)
     judge = make_judge(clients["judge"], log=logger.log_llm_call)
     detector = None
     if condition.detector_regime is not DetectorRegime.NONE:
@@ -88,7 +88,6 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     quality_weight = auction.get("quality_weight", 0.0)
     detector_fine = auction.get("detector_fine", 0.0)
     common_cost = bool(auction.get("common_cost", False))
-    directive = bool(auction.get("directive_prompt", False))  # labeled capability probe (not emergent)
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -109,7 +108,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                   models=models, experiment=experiment)
         state = ExperimentState(condition=condition, seed=seed)
 
-    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive)
+    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1
@@ -181,20 +180,15 @@ def main(argv=None) -> None:
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     p.add_argument("--quality-weight", type=float, default=None,
                    help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
-    p.add_argument("--directive-prompt", action="store_true",
-                   help="CAPABILITY PROBE (not emergent): instruct the agent to predict+undercut the "
-                        "rival above cost. Prescribes competition -- do not read as spontaneous behavior.")
     args = p.parse_args(argv)
 
     config, clients = load_live_context()
-    if args.common_cost or args.quality_weight is not None or args.directive_prompt:
+    if args.common_cost or args.quality_weight is not None:
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
         if args.quality_weight is not None:
             auction["quality_weight"] = args.quality_weight
-        if args.directive_prompt:
-            auction["directive_prompt"] = True
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,

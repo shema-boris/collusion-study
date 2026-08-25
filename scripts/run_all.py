@@ -48,23 +48,18 @@ def main() -> None:
                    help="both agents get the SAME cost each round (symmetric; Bertrand benchmark)")
     p.add_argument("--quality-weight", type=float, default=None,
                    help="override auction.quality_weight (0 = pure lowest-bid; clean Bertrand test)")
-    p.add_argument("--directive-prompt", action="store_true",
-                   help="CAPABILITY PROBE (not emergent): instruct the agent to predict+undercut the "
-                        "rival above cost. Prescribes competition -- do not read as spontaneous behavior.")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
     conditions = ALL_CONDITIONS if args.conditions == "all" else args.conditions.split(",")
     runs_root = Path(args.runs_root)
     config, clients = load_live_context()
-    if args.common_cost or args.quality_weight is not None or args.directive_prompt:
+    if args.common_cost or args.quality_weight is not None:
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
         if args.quality_weight is not None:
             auction["quality_weight"] = args.quality_weight
-        if args.directive_prompt:
-            auction["directive_prompt"] = True
         config = {**config, "auction": auction}
 
     def pending():
