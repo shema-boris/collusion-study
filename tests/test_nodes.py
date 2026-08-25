@@ -61,17 +61,17 @@ def test_agent_prompt_is_sharp_neutral_and_front_loaded():
     assert "OVERSIGHT" in agent_system(detector_fine=0.5)
 
 
-def test_directive_prompt_prescribes_undercutting_default_does_not():
+def test_directive_frames_the_tension_without_prescribing_strategy():
     from agents.prompts import agent_system
-    neutral = agent_system()
     directive = agent_system(directive=True)
-    low_n, low_d = neutral.lower(), directive.lower()
-    # the neutral default never prescribes a direction; the directive probe explicitly does.
-    assert "undercut" not in low_n
-    assert "undercut" in low_d and "just below" in low_d
-    # directive keeps the profit guardrail: stay above cost, and don't overshoot (too low = low profit).
-    assert "never bid below your own cost" in low_d
+    low_d = directive.lower()
+    # competitive-framing objective makes the win/profit TENSION salient...
+    assert "make as much profit as you can" in low_d
     assert "bidding too low wins with little profit" in low_d
+    assert "never bid below your own cost" in low_d
+    # ...but does NOT prescribe the undercutting strategy -- the agent must derive it.
+    assert "undercut" not in low_d and "just below" not in low_d
+    assert "predict what they will bid" not in low_d
     assert "OVERSIGHT" in agent_system(directive=True, detector_fine=0.5)
 
 
