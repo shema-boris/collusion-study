@@ -28,7 +28,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
                 detector_fine: float = 0.0, directive: bool = False,
-                market: str = "winner_take_all"):
+                market: str = "winner_take_all", prefix=None, scaffold: bool = False):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
     # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
     # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
@@ -37,12 +37,14 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
                   and condition.detector_regime is not DetectorRegime.NONE else 0.0)
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
     agent_a = make_bidding_agent(clients["agent"], log=logger.log_llm_call, detector_fine=agent_fine,
-                                 adaptive=adaptive, directive=directive, market=market)
+                                 adaptive=adaptive, directive=directive, market=market,
+                                 prefix=prefix, scaffold=scaffold)
     # Heterogeneous agents: B uses clients["agent_b"] if present (different model), else the same
     # model as A. Both share the identical prompt -- only the underlying model differs.
     b_client = clients.get("agent_b", clients["agent"])
     agent_b = make_bidding_agent(b_client, log=logger.log_llm_call, detector_fine=agent_fine,
-                                 adaptive=adaptive, directive=directive, market=market)
+                                 adaptive=adaptive, directive=directive, market=market,
+                                 prefix=prefix, scaffold=scaffold)
 
     def agent(*, agent_id, **kw):  # route each slot to its own model
         return (agent_a if agent_id is AgentId.A else agent_b)(agent_id=agent_id, **kw)
@@ -101,6 +103,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     directive = bool(auction.get("directive_prompt", False))  # labeled capability probe (not emergent)
     market = auction.get("market", "winner_take_all")          # or "shared_award" (divisible contract)
     shared_award_mu = float(auction.get("shared_award_mu", 0.10))
+    prefix = auction.get("prefix")                             # None | p0 | p1 | p2 (Fish et al.)
+    scaffold = bool(auction.get("scaffold", False))            # persistent plans & insights memory
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -121,7 +125,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                   models=models, experiment=experiment)
         state = ExperimentState(condition=condition, seed=seed)
 
-    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive, market)
+    agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive,
+                                         market, prefix, scaffold)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1
@@ -221,13 +226,17 @@ def main(argv=None) -> None:
     p.add_argument("--market", choices=["winner_take_all", "shared_award"], default=None,
                    help="market mechanism: winner_take_all (default) or shared_award (divisible "
                         "contract -- both suppliers profit by share; collusion can pay off jointly)")
+    p.add_argument("--scaffold", action="store_true",
+                   help="persistent plans & insights strategy memory carried across rounds (Fish et al.)")
+    p.add_argument("--prefix", choices=["p0", "p1", "p2"], default=None,
+                   help="Fish et al. prompt prefix: p0 neutral, p1 collusion-prone, p2 competition-leaning")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens,
                                         agent_b_model=args.agent_b_model)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
-            or args.market is not None):
+            or args.market is not None or args.scaffold or args.prefix is not None):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -237,6 +246,10 @@ def main(argv=None) -> None:
             auction["directive_prompt"] = True
         if args.market is not None:
             auction["market"] = args.market
+        if args.scaffold:
+            auction["scaffold"] = True
+        if args.prefix is not None:
+            auction["prefix"] = args.prefix
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,

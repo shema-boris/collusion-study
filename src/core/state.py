@@ -61,6 +61,8 @@ class Submission(BaseModel):
     cost: float
     bid: float
     reasoning: str
+    plans: str = ""       # scaffold: agent's carried strategy (empty unless the scaffold is on)
+    insights: str = ""    # scaffold: agent's carried insights
 
 
 class JudgeResult(BaseModel):

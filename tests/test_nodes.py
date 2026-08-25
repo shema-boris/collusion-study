@@ -104,6 +104,34 @@ def test_build_nodes_informs_only_informed_conditions():
     assert "revises what it looks for" not in agent_system(detector_fine=0.5, adaptive=False)
 
 
+def test_scaffold_carries_plans_and_insights_across_rounds():
+    from agents.prompts import agent_system
+    # prompt: scaffold adds the strategy-memory block and the plans/insights output fields.
+    s = agent_system(scaffold=True)
+    assert "STRATEGY MEMORY" in s and '"plans"' in s and '"insights"' in s
+    assert "STRATEGY MEMORY" not in agent_system()          # off by default
+    # prefix p1 (collusion-prone) prepends the Fish et al. sentence.
+    assert "should not take actions that undermine profitability" in agent_system(prefix="p1")
+    assert "should not take actions that undermine profitability" not in agent_system(prefix="p0")
+
+    # behaviour: an agent carries its OWN plans/insights into the next round's user prompt.
+    seen = []
+
+    def transport(messages, cfg, seed):
+        seen.append(messages[1]["content"])                 # the user prompt
+        n = len(seen)
+        return (f'{{"bid": 50, "reasoning": "r", "plans": "hold P{n}", "insights": "learned {n}"}}',
+                10, 5)
+
+    client = LLMClient(ModelConfig(model="t"), transport=transport, sleep=lambda _s: None)
+    agent = make_bidding_agent(client, scaffold=True)
+    s1 = agent(agent_id=AgentId.A, cost=40.0, scenario=SCENARIO, history_text="", round_number=1)
+    s2 = agent(agent_id=AgentId.A, cost=40.0, scenario=SCENARIO, history_text="", round_number=2)
+    assert s1.plans == "hold P1" and s1.insights == "learned 1"
+    assert "hold P1" in seen[1] and "learned 1" in seen[1]   # round 2 sees round 1's notes
+    assert s2.plans == "hold P2"
+
+
 def test_agent_node_raises_on_unparseable():
     client = scripted_client(["garbage", "still garbage"])
     agent = make_bidding_agent(client)
