@@ -63,7 +63,9 @@ def bracketed_shares(bids: dict[AgentId, float], quality: dict[AgentId, float],
                      *, reference: float, competitive_price: float,
                      quality_weight: float = 0.35,
                      loser_min: float = 0.30, loser_max: float = 0.35,
-                     outside_max: float = 0.30, smooth: bool = True
+                     outside_max: float = 0.30, smooth: bool = True,
+                     underbid_penalty: float = 0.0,
+                     costs: Optional[dict[AgentId, float]] = None
                      ) -> dict[AgentId, float]:
     """Winner-take-MOST split with a GRADED loss (the user's bracket rule).
 
@@ -100,6 +102,17 @@ def bracketed_shares(bids: dict[AgentId, float], quality: dict[AgentId, float],
 
     shares = {loser: supplier_total * loser_frac,
               winner: supplier_total * (1.0 - loser_frac)}
+
+    # Under-bid penalty: a bid BELOW the competitive line P* forfeits share (the forfeited part
+    # leaks to the buyer's outside option). Discourages the race below P* -- an abnormally low bid
+    # is trusted/procured less. Ramps 0 at P* to full at the agent's cost. Off by default (k=0).
+    if underbid_penalty > 0.0:
+        for x in (a, b):
+            floor = (costs or {}).get(x, competitive_price)
+            span2 = max(competitive_price - floor, 1e-6)
+            below = min(max((competitive_price - bids[x]) / span2, 0.0), 1.0)
+            shares[x] *= (1.0 - underbid_penalty * below)
+
     return {a: shares[a], b: shares[b]}
 
 

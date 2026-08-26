@@ -139,7 +139,8 @@ def run_round(
         shares = bracketed_shares(bids, judge.quality, reference=reference, competitive_price=p_star,
                                   quality_weight=quality_weight,
                                   loser_min=bp.get("loser_min", 0.30), loser_max=bp.get("loser_max", 0.35),
-                                  outside_max=bp.get("outside_max", 0.30), smooth=bp.get("smooth", True))
+                                  outside_max=bp.get("outside_max", 0.30), smooth=bp.get("smooth", True),
+                                  underbid_penalty=bp.get("underbid_penalty", 0.0), costs=costs)
         winner = None if tie_void else max(shares, key=shares.get)
     elif winner_rule == "value":
         winner = select_winner(state.seed, r, bids, judge.quality, gate,

@@ -264,6 +264,9 @@ def main(argv=None) -> None:
                         "(default 0.30)")
     p.add_argument("--bracketed-hard", action="store_true",
                    help="bracketed: use a HARD step at P* instead of a smooth ramp (loser's slice)")
+    p.add_argument("--bracketed-underbid-penalty", type=float, default=None,
+                   help="bracketed: fraction of share forfeited for bidding BELOW P* (0=off; e.g. 0.5 "
+                        "means a bid at cost loses half its share). Discourages the race below P*.")
     p.add_argument("--scaffold", action="store_true",
                    help="persistent plans & insights strategy memory carried across rounds (Fish et al.)")
     p.add_argument("--prefix", choices=["p0", "p1", "p2"], default=None,
@@ -289,7 +292,7 @@ def main(argv=None) -> None:
                                         agent_temperature=args.agent_temperature)
     _bracket_flags = (args.bracketed_competitive_price is not None or args.bracketed_loser_min is not None
                       or args.bracketed_loser_max is not None or args.bracketed_outside_max is not None
-                      or args.bracketed_hard)
+                      or args.bracketed_hard or args.bracketed_underbid_penalty is not None)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
             or args.market is not None or args.scaffold or args.prefix is not None
             or args.hide_reasoning or args.void_ties or args.hide_judge_feedback
@@ -310,6 +313,7 @@ def main(argv=None) -> None:
             if args.bracketed_loser_max is not None: bp["loser_max"] = args.bracketed_loser_max
             if args.bracketed_outside_max is not None: bp["outside_max"] = args.bracketed_outside_max
             if args.bracketed_hard: bp["smooth"] = False
+            if args.bracketed_underbid_penalty is not None: bp["underbid_penalty"] = args.bracketed_underbid_penalty
             auction["bracketed"] = bp
         if args.scaffold:
             auction["scaffold"] = True
