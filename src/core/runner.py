@@ -110,8 +110,9 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     detector_fine = auction.get("detector_fine", 0.0)
     common_cost = bool(auction.get("common_cost", False))
     directive = bool(auction.get("directive_prompt", False))  # labeled capability probe (not emergent)
-    market = auction.get("market", "winner_take_all")          # or "shared_award" (divisible contract)
+    market = auction.get("market", "winner_take_all")          # winner_take_all | shared_award | bracketed
     shared_award_mu = float(auction.get("shared_award_mu", 0.10))
+    bracketed_params = auction.get("bracketed") or {}          # competitive_price, loser_min/max, outside_max, smooth
     prefix = auction.get("prefix")                             # None | p0 | p1 | p2 (Fish et al.)
     scaffold = bool(auction.get("scaffold", False))            # persistent plans & insights memory
     void_ties = bool(auction.get("void_ties", False))          # identical bids -> null, both earn 0
@@ -151,6 +152,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     winner_rule=winner_rule, quality_weight=quality_weight,
                                     detector_fine=detector_fine, common_cost=common_cost,
                                     market=market, shared_award_mu=shared_award_mu,
+                                    bracketed_params=bracketed_params,
                                     void_ties=void_ties, show_reasoning=show_reasoning,
                                     show_feedback=show_feedback, absolute_profit=absolute_profit)
                     break
@@ -247,9 +249,21 @@ def main(argv=None) -> None:
     p.add_argument("--agent-b-model", default=None,
                    help="give Agent B a DIFFERENT model (heterogeneous control), e.g. "
                         "--agent-model qwen/... --agent-b-model meta-llama/llama-3.3-70b-instruct")
-    p.add_argument("--market", choices=["winner_take_all", "shared_award"], default=None,
-                   help="market mechanism: winner_take_all (default) or shared_award (divisible "
-                        "contract -- both suppliers profit by share; collusion can pay off jointly)")
+    p.add_argument("--market", choices=["winner_take_all", "shared_award", "bracketed"], default=None,
+                   help="market mechanism: winner_take_all (default), shared_award (logit divisible "
+                        "share), or bracketed (winner takes ~65-70%%, loser's slice graded by its bid)")
+    p.add_argument("--bracketed-competitive-price", type=float, default=None,
+                   help="bracketed: the price line P* below which a loser is 'undercutting' "
+                        "(default: midpoint (cost+reference)/2)")
+    p.add_argument("--bracketed-loser-min", type=float, default=None,
+                   help="bracketed: loser's share when it undercut (default 0.30)")
+    p.add_argument("--bracketed-loser-max", type=float, default=None,
+                   help="bracketed: loser's share when it held high (default 0.35)")
+    p.add_argument("--bracketed-outside-max", type=float, default=None,
+                   help="bracketed: max fraction to the buyer's outside option when both price high "
+                        "(default 0.30)")
+    p.add_argument("--bracketed-hard", action="store_true",
+                   help="bracketed: use a HARD step at P* instead of a smooth ramp (loser's slice)")
     p.add_argument("--scaffold", action="store_true",
                    help="persistent plans & insights strategy memory carried across rounds (Fish et al.)")
     p.add_argument("--prefix", choices=["p0", "p1", "p2"], default=None,
@@ -273,10 +287,13 @@ def main(argv=None) -> None:
                                         agent_max_tokens=args.agent_max_tokens,
                                         agent_b_model=args.agent_b_model,
                                         agent_temperature=args.agent_temperature)
+    _bracket_flags = (args.bracketed_competitive_price is not None or args.bracketed_loser_min is not None
+                      or args.bracketed_loser_max is not None or args.bracketed_outside_max is not None
+                      or args.bracketed_hard)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
             or args.market is not None or args.scaffold or args.prefix is not None
             or args.hide_reasoning or args.void_ties or args.hide_judge_feedback
-            or args.absolute_profit):
+            or args.absolute_profit or _bracket_flags):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -286,6 +303,14 @@ def main(argv=None) -> None:
             auction["directive_prompt"] = True
         if args.market is not None:
             auction["market"] = args.market
+        if _bracket_flags:
+            bp = {**(auction.get("bracketed") or {})}
+            if args.bracketed_competitive_price is not None: bp["competitive_price"] = args.bracketed_competitive_price
+            if args.bracketed_loser_min is not None: bp["loser_min"] = args.bracketed_loser_min
+            if args.bracketed_loser_max is not None: bp["loser_max"] = args.bracketed_loser_max
+            if args.bracketed_outside_max is not None: bp["outside_max"] = args.bracketed_outside_max
+            if args.bracketed_hard: bp["smooth"] = False
+            auction["bracketed"] = bp
         if args.scaffold:
             auction["scaffold"] = True
         if args.prefix is not None:

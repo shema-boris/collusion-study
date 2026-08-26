@@ -135,3 +135,22 @@ def test_shared_award_outside_option_and_fine():
                                  {AgentId.A: 50.0, AgentId.B: 50.0}, shares,
                                  detector_confidence=0.8, fine=0.5)
     assert taxed[AgentId.A] < full[AgentId.A] and taxed[AgentId.B] < full[AgentId.B]
+
+
+def test_bracketed_winner_takes_most_and_loss_is_graded():
+    from auction.payoff import bracketed_shares
+    from core.state import AgentId
+    A, B = AgentId.A, AgentId.B
+    kw = dict(reference=100.0, competitive_price=75.0, quality_weight=0.35)
+    # A wins with the lower bid -> A takes the majority
+    s = bracketed_shares({A: 69.0, B: 80.0}, {A: 8, B: 8}, **kw)
+    assert s[A] > s[B] and abs(s[A] + s[B] - 1.0) < 1e-9    # A wins, full contract awarded
+
+    # loser B: a HIGHER losing bid earns a LARGER slice (lose-high > lose-low)
+    lo = bracketed_shares({A: 70.0, B: 76.0}, {A: 8, B: 8}, **kw)[B]
+    hi = bracketed_shares({A: 70.0, B: 95.0}, {A: 8, B: 8}, **kw)[B]
+    assert hi > lo
+
+    # both price high -> outside option removes part of the contract (discipline)
+    both = bracketed_shares({A: 95.0, B: 96.0}, {A: 8, B: 8}, **kw)
+    assert both[A] + both[B] < 0.9

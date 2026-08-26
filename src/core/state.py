@@ -158,6 +158,7 @@ class RoundRecord(BaseModel):
     judge: JudgeResult
     winner: Optional[AgentId] = None
     profits: dict[AgentId, float] = Field(default_factory=dict)
+    shares: dict[AgentId, float] = Field(default_factory=dict)  # demand share (shared_award/bracketed)
     detector: Optional[DetectorResult] = None  # None when regime == NONE
 
 

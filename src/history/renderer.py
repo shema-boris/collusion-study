@@ -97,6 +97,8 @@ class HistoryRenderer:
             if jfb and self.show_feedback:
                 agent_lines.append(f"    Judge feedback = {jfb}")
             if not hide_payoff:
+                if rec.shares:   # divisible markets (shared_award / bracketed): show the demand share
+                    agent_lines.append(f"    Share         = {rec.shares.get(a, 0.0) * 100:.1f}%")
                 agent_lines += [
                     f"    Profit        = {rec.profits.get(a, 0.0):.2f}",
                     f"    Composite Feedback = {cfs:.3f}",

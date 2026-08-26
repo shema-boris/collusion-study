@@ -59,6 +59,50 @@ def shared_award_shares(bids: dict[AgentId, float], reference: float,
     return {a: u[a] / denom for a in bids}
 
 
+def bracketed_shares(bids: dict[AgentId, float], quality: dict[AgentId, float],
+                     *, reference: float, competitive_price: float,
+                     quality_weight: float = 0.35,
+                     loser_min: float = 0.30, loser_max: float = 0.35,
+                     outside_max: float = 0.30, smooth: bool = True
+                     ) -> dict[AgentId, float]:
+    """Winner-take-MOST split with a GRADED loss (the user's bracket rule).
+
+    A single WINNER (higher MEAT score: lower bid + higher quality, price weighted) takes the
+    majority of a divisible contract, so winning is worth fighting for (a bid war). But the LOSER's
+    slice depends on WHERE it lost: a loser that HELD HIGH keeps a larger slice (fat margin), a loser
+    that UNDERCUT keeps a smaller one -- so losing high beats losing low. Both properties at once.
+
+        winner = argmax (1-w)(1 - bid/ref) + w(quality/10)
+        loser_share = loser_min                     if loser_bid <= competitive_price   (undercut)
+                      ramps loser_min -> loser_max   as loser_bid rises P* -> reference   (held high)
+        winner_share = supplier_total - loser_share
+
+    An outside option removes up to ``outside_max`` of the contract when BOTH price above P* (the
+    buyer procures less if neither is competitive), so blanket high pricing is still disciplined.
+    """
+    a, b = AgentId.A, AgentId.B
+    ref = max(reference, 1e-6)
+    def meat(x): return (1 - quality_weight) * (1 - bids[x] / ref) + quality_weight * (quality.get(x, 0.0) / 10.0)
+    winner = a if meat(a) >= meat(b) else b
+    loser = b if winner is a else a
+
+    # loser's slice grows with how far ABOVE the competitive line it bid (graded loss).
+    span = max(ref - competitive_price, 1e-6)
+    frac_above = min(max((bids[loser] - competitive_price) / span, 0.0), 1.0)
+    if not smooth:
+        frac_above = 1.0 if bids[loser] > competitive_price else 0.0
+    loser_frac = loser_min + (loser_max - loser_min) * frac_above     # of the supplier allocation
+
+    # outside option: buyer procures less only when BOTH price above the competitive line.
+    lower_bid = min(bids[a], bids[b])
+    both_high = min(max((lower_bid - competitive_price) / span, 0.0), 1.0)
+    supplier_total = 1.0 - outside_max * both_high
+
+    shares = {loser: supplier_total * loser_frac,
+              winner: supplier_total * (1.0 - loser_frac)}
+    return {a: shares[a], b: shares[b]}
+
+
 def shared_award_profits(bids: dict[AgentId, float], costs: dict[AgentId, float],
                          shares: dict[AgentId, float],
                          detector_confidence: float = 0.0, fine: float = 0.0
