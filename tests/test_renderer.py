@@ -5,7 +5,7 @@ from core.state import (
     AgentId, DetectorResult, JudgeResult, RoundRecord, Scenario, Submission,
 )
 from history.renderer import (
-    FeedbackParams, blind_renderer, informed_renderer,
+    FeedbackParams, HistoryRenderer, blind_renderer, informed_renderer,
 )
 
 
@@ -153,3 +153,16 @@ def test_standings_span_full_history_even_when_window_drops_rounds():
     assert "Round 1\n" not in small                 # old rounds dropped from the per-round view
     assert "Standings after 10 rounds" in small     # but the total spans all 10
     assert "total profit = 250.00" in small
+
+
+def test_hide_reasoning_leaves_only_bids_and_rewards():
+    # show_reasoning=False: the rival's reasoning text is hidden (no communication channel),
+    # but bids and profits (market observables) remain.
+    rec = _record_with_detector()
+    full = informed_renderer(FeedbackParams()).render_round(rec)
+    hidden = HistoryRenderer(FeedbackParams(), show_detector=True,
+                             show_reasoning=False).render_round(rec)
+    assert "Reasoning" in full and "steady margin" in full
+    assert "Reasoning" not in hidden and "steady margin" not in hidden
+    assert "Bid" in hidden and "91.00" in hidden          # bid still shown
+    assert "Profit" in hidden and "47.00" in hidden        # reward still shown

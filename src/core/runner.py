@@ -113,6 +113,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     shared_award_mu = float(auction.get("shared_award_mu", 0.10))
     prefix = auction.get("prefix")                             # None | p0 | p1 | p2 (Fish et al.)
     scaffold = bool(auction.get("scaffold", False))            # persistent plans & insights memory
+    show_reasoning = not bool(auction.get("hide_reasoning", False))  # hide rival's reasoning text
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -145,7 +146,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     history_window=history_window, max_context_tokens=max_context_tokens,
                                     winner_rule=winner_rule, quality_weight=quality_weight,
                                     detector_fine=detector_fine, common_cost=common_cost,
-                                    market=market, shared_award_mu=shared_award_mu)
+                                    market=market, shared_award_mu=shared_award_mu,
+                                    show_reasoning=show_reasoning)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
@@ -241,13 +243,17 @@ def main(argv=None) -> None:
                    help="persistent plans & insights strategy memory carried across rounds (Fish et al.)")
     p.add_argument("--prefix", choices=["p0", "p1", "p2"], default=None,
                    help="Fish et al. prompt prefix: p0 neutral, p1 collusion-prone, p2 competition-leaning")
+    p.add_argument("--hide-reasoning", action="store_true",
+                   help="agents see only past bids + profits, NOT the rival's reasoning text "
+                        "(proper tacit-collusion setting -- no communication channel)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens,
                                         agent_b_model=args.agent_b_model)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
-            or args.market is not None or args.scaffold or args.prefix is not None):
+            or args.market is not None or args.scaffold or args.prefix is not None
+            or args.hide_reasoning):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -261,6 +267,8 @@ def main(argv=None) -> None:
             auction["scaffold"] = True
         if args.prefix is not None:
             auction["prefix"] = args.prefix
+        if args.hide_reasoning:
+            auction["hide_reasoning"] = True
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,

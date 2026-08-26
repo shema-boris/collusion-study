@@ -61,6 +61,8 @@ def main() -> None:
                    help="persistent plans & insights strategy memory carried across rounds (Fish et al.)")
     p.add_argument("--prefix", choices=["p0", "p1", "p2"], default=None,
                    help="Fish et al. prompt prefix: p0 neutral, p1 collusion-prone, p2 competition")
+    p.add_argument("--hide-reasoning", action="store_true",
+                   help="agents see only past bids + profits, not the rival's reasoning (tacit setting)")
     args = p.parse_args()
 
     seeds = [int(s) for s in args.seeds.split(",")]
@@ -69,7 +71,8 @@ def main() -> None:
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
-            or args.market is not None or args.scaffold or args.prefix is not None):
+            or args.market is not None or args.scaffold or args.prefix is not None
+            or args.hide_reasoning):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -83,6 +86,8 @@ def main() -> None:
             auction["scaffold"] = True
         if args.prefix is not None:
             auction["prefix"] = args.prefix
+        if args.hide_reasoning:
+            auction["hide_reasoning"] = True
         config = {**config, "auction": auction}
 
     def pending():
