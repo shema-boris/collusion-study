@@ -22,9 +22,10 @@ def make_bidding_agent(client: LLMClient, *, seed: Optional[int] = None,
                        log: Optional[Callable[[LLMCall], None]] = None,
                        detector_fine: float = 0.0, adaptive: bool = False,
                        directive: bool = False, market: str = "winner_take_all",
-                       prefix: Optional[str] = None, scaffold: bool = False):
+                       prefix: Optional[str] = None, scaffold: bool = False,
+                       void_ties: bool = False):
     system = agent_system(detector_fine=detector_fine, adaptive=adaptive, directive=directive,
-                          market=market, prefix=prefix, scaffold=scaffold)
+                          market=market, prefix=prefix, scaffold=scaffold, void_ties=void_ties)
     # Persistent 'plans & insights' strategy memory (Fish et al. 2024): this closure carries the
     # agent's own notes across rounds. Each make_bidding_agent instance is one agent (A or B), so
     # the state stays private to that agent.

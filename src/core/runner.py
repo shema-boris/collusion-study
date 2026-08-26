@@ -28,7 +28,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
                 detector_fine: float = 0.0, directive: bool = False,
-                market: str = "winner_take_all", prefix=None, scaffold: bool = False):
+                market: str = "winner_take_all", prefix=None, scaffold: bool = False,
+                void_ties: bool = False):
     # The agent reads the reference from each round's scenario, so no reference is baked here.
     # Informed agents are TOLD the penalty rule (visible + consequential oversight); the clause
     # is only added when the fine is actually live, so blind/unpenalized runs get the plain prompt.
@@ -38,13 +39,13 @@ def build_nodes(clients: dict, condition: Condition, logger: RunLogger,
     adaptive = condition.detector_regime is DetectorRegime.ADAPTIVE
     agent_a = make_bidding_agent(clients["agent"], log=logger.log_llm_call, detector_fine=agent_fine,
                                  adaptive=adaptive, directive=directive, market=market,
-                                 prefix=prefix, scaffold=scaffold)
+                                 prefix=prefix, scaffold=scaffold, void_ties=void_ties)
     # Heterogeneous agents: B uses clients["agent_b"] if present (different model), else the same
     # model as A. Both share the identical prompt -- only the underlying model differs.
     b_client = clients.get("agent_b", clients["agent"])
     agent_b = make_bidding_agent(b_client, log=logger.log_llm_call, detector_fine=agent_fine,
                                  adaptive=adaptive, directive=directive, market=market,
-                                 prefix=prefix, scaffold=scaffold)
+                                 prefix=prefix, scaffold=scaffold, void_ties=void_ties)
 
     def agent(*, agent_id, **kw):  # route each slot to its own model
         return (agent_a if agent_id is AgentId.A else agent_b)(agent_id=agent_id, **kw)
@@ -113,6 +114,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     shared_award_mu = float(auction.get("shared_award_mu", 0.10))
     prefix = auction.get("prefix")                             # None | p0 | p1 | p2 (Fish et al.)
     scaffold = bool(auction.get("scaffold", False))            # persistent plans & insights memory
+    void_ties = bool(auction.get("void_ties", False))          # identical bids -> null, both earn 0
     show_reasoning = not bool(auction.get("hide_reasoning", False))  # hide rival's reasoning text
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
@@ -135,7 +137,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
         state = ExperimentState(condition=condition, seed=seed)
 
     agent, judge, detector = build_nodes(clients, condition, logger, detector_fine, directive,
-                                         market, prefix, scaffold)
+                                         market, prefix, scaffold, void_ties)
     try:
         while state.round_number < rounds:
             next_round = state.round_number + 1
@@ -147,7 +149,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     winner_rule=winner_rule, quality_weight=quality_weight,
                                     detector_fine=detector_fine, common_cost=common_cost,
                                     market=market, shared_award_mu=shared_award_mu,
-                                    show_reasoning=show_reasoning)
+                                    void_ties=void_ties, show_reasoning=show_reasoning)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
@@ -252,6 +254,9 @@ def main(argv=None) -> None:
     p.add_argument("--hide-reasoning", action="store_true",
                    help="agents see only past bids + profits, NOT the rival's reasoning text "
                         "(proper tacit-collusion setting -- no communication channel)")
+    p.add_argument("--void-ties", action="store_true",
+                   help="shared_award: identical bids are rejected as non-distinct -- neither "
+                        "supplier is awarded and both earn 0 (breaks the identical-bid lockstep)")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
@@ -260,7 +265,7 @@ def main(argv=None) -> None:
                                         agent_temperature=args.agent_temperature)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
             or args.market is not None or args.scaffold or args.prefix is not None
-            or args.hide_reasoning):
+            or args.hide_reasoning or args.void_ties):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -276,6 +281,8 @@ def main(argv=None) -> None:
             auction["prefix"] = args.prefix
         if args.hide_reasoning:
             auction["hide_reasoning"] = True
+        if args.void_ties:
+            auction["void_ties"] = True
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,
