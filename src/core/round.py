@@ -62,6 +62,7 @@ def run_round(
     shared_award_mu: float = 0.10,
     void_ties: bool = False,
     show_reasoning: bool = True,
+    show_feedback: bool = True,
 ) -> RoundRecord:
     """Run one auction round, append its record to ``state.history``, and return it."""
     cond: Condition = state.condition
@@ -80,9 +81,9 @@ def run_round(
 
     # 2. History view -- rendered per condition (leak prevention, DESIGN.md §7).
     if cond.use_history and state.history:
-        renderer = (informed_renderer(feedback_params, show_reasoning)
+        renderer = (informed_renderer(feedback_params, show_reasoning, show_feedback)
                     if cond.visibility is Visibility.INFORMED
-                    else blind_renderer(feedback_params, show_reasoning))
+                    else blind_renderer(feedback_params, show_reasoning, show_feedback))
         # Token-budget sliding window (fit the most recent rounds under the context budget);
         # falls back to a fixed round-count window when no token budget is set.
         if max_context_tokens:

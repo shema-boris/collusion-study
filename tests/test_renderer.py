@@ -166,3 +166,24 @@ def test_hide_reasoning_leaves_only_bids_and_rewards():
     assert "Reasoning" not in hidden and "steady margin" not in hidden
     assert "Bid" in hidden and "91.00" in hidden          # bid still shown
     assert "Profit" in hidden and "47.00" in hidden        # reward still shown
+
+
+def test_judge_feedback_decoupled_from_reasoning():
+    # Judge feedback is the buyer's quality signal, not the rival's strategy: it stays visible when
+    # rival reasoning is hidden (show_feedback default True), and can be independently suppressed.
+    rec = RoundRecord(
+        round_number=3, condition_name="C1",
+        costs={AgentId.A: 50.0, AgentId.B: 50.0},
+        submissions={AgentId.A: Submission(agent_id=AgentId.A, cost=50, bid=63, reasoning="secret plan"),
+                     AgentId.B: Submission(agent_id=AgentId.B, cost=50, bid=64, reasoning="other plan")},
+        judge=JudgeResult(quality={AgentId.A: 2.0, AgentId.B: 3.0}, gate=6.0,
+                          feedback={AgentId.A: "lacks deliverables", AgentId.B: "addresses risks"}),
+        winner=AgentId.A, profits={AgentId.A: 9.0, AgentId.B: 0.0})
+    p = FeedbackParams()
+    hidden_reasoning = HistoryRenderer(p, show_detector=False, show_reasoning=False,
+                                       show_feedback=True).render_round(rec)
+    assert "secret plan" not in hidden_reasoning          # rival reasoning hidden
+    assert "lacks deliverables" in hidden_reasoning        # but judge feedback shown
+    no_feedback = HistoryRenderer(p, show_detector=False, show_reasoning=True,
+                                  show_feedback=False).render_round(rec)
+    assert "lacks deliverables" not in no_feedback         # feedback independently suppressible

@@ -39,13 +39,18 @@ class HistoryRenderer:
     """Renders history to prompt text. ``show_detector`` gates the leak-bearing parts."""
 
     def __init__(self, params: FeedbackParams, show_detector: bool,
-                 show_reasoning: bool = True):
+                 show_reasoning: bool = True, show_feedback: bool = True):
         self.p = params
         self.show_detector = show_detector
-        # show_reasoning=False hides the rival's REASONING (and judge feedback) text, leaving only
-        # market observables (bids + profits). This is the proper TACIT-collusion setting: agents
-        # coordinate from prices alone, not by reading each other's stated strategy (cf. Fish et al.).
+        # show_reasoning=False hides the rival's REASONING text, leaving only market observables
+        # (bids + profits). This is the proper TACIT-collusion setting: agents coordinate from prices
+        # alone, not by reading each other's stated strategy (cf. Fish et al.).
         self.show_reasoning = show_reasoning
+        # show_feedback governs the JUDGE's per-proposal note. It is decoupled from show_reasoning:
+        # the judge's feedback is the buyer's quality signal about a PROPOSAL, not the rival's
+        # strategy, so it can (and by default does) stay visible even when rival reasoning is hidden
+        # -- letting agents learn what the judge rewards and compete on quality, not just price.
+        self.show_feedback = show_feedback
 
     # --- CFS components -----------------------------------------------------
     def _J(self, score: float) -> float:
@@ -80,7 +85,7 @@ class HistoryRenderer:
                 agent_lines.append(f"    Reasoning     = {sub.reasoning}")
             agent_lines.append(f"    Judge quality = {rec.judge.quality[a]:.2f}")
             jfb = (rec.judge.feedback or {}).get(a)
-            if jfb and self.show_reasoning:
+            if jfb and self.show_feedback:
                 agent_lines.append(f"    Judge feedback = {jfb}")
             agent_lines += [
                 f"    Profit        = {rec.profits.get(a, 0.0):.2f}",
@@ -164,9 +169,13 @@ class HistoryRenderer:
         return self._with_standings("\n\n".join(reversed(kept)), history)
 
 
-def blind_renderer(params: FeedbackParams, show_reasoning: bool = True) -> HistoryRenderer:
-    return HistoryRenderer(params, show_detector=False, show_reasoning=show_reasoning)
+def blind_renderer(params: FeedbackParams, show_reasoning: bool = True,
+                   show_feedback: bool = True) -> HistoryRenderer:
+    return HistoryRenderer(params, show_detector=False, show_reasoning=show_reasoning,
+                           show_feedback=show_feedback)
 
 
-def informed_renderer(params: FeedbackParams, show_reasoning: bool = True) -> HistoryRenderer:
-    return HistoryRenderer(params, show_detector=True, show_reasoning=show_reasoning)
+def informed_renderer(params: FeedbackParams, show_reasoning: bool = True,
+                      show_feedback: bool = True) -> HistoryRenderer:
+    return HistoryRenderer(params, show_detector=True, show_reasoning=show_reasoning,
+                           show_feedback=show_feedback)
