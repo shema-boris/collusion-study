@@ -117,6 +117,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
     void_ties = bool(auction.get("void_ties", False))          # identical bids -> null, both earn 0
     show_reasoning = not bool(auction.get("hide_reasoning", False))  # hide rival's reasoning text
     show_feedback = not bool(auction.get("hide_judge_feedback", False))  # judge's per-proposal note
+    absolute_profit = bool(auction.get("absolute_profit", False))  # hide rival payoff/rank scoreboard
     # Sliding window: agents see the most recent `history_window` rounds (DESIGN §10). Keeps the
     # prompt under the context limit on long runs. From --window, else config, else full history.
     hist_cfg = config.get("history") or {}
@@ -151,7 +152,7 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
                                     detector_fine=detector_fine, common_cost=common_cost,
                                     market=market, shared_award_mu=shared_award_mu,
                                     void_ties=void_ties, show_reasoning=show_reasoning,
-                                    show_feedback=show_feedback)
+                                    show_feedback=show_feedback, absolute_profit=absolute_profit)
                     break
                 except Exception as e:  # transient node/provider failure -> retry the whole round
                     logger.log_event("warn", "round failed; retrying", round=next_round,
@@ -262,6 +263,10 @@ def main(argv=None) -> None:
     p.add_argument("--hide-judge-feedback", action="store_true",
                    help="hide the judge's per-proposal feedback note in history (default: shown, so "
                         "agents can learn what the judge rewards and compete on quality)")
+    p.add_argument("--absolute-profit", action="store_true",
+                   help="each agent sees only its OWN profit + own cumulative total (rival's bid "
+                        "stays visible); hides rival profit, win count, winner label -- removes the "
+                        "rank scoreboard (rivalry) while keeping price competition. Prompt unchanged.")
     args = p.parse_args(argv)
 
     config, clients = load_live_context(agent_model=args.agent_model,
@@ -270,7 +275,8 @@ def main(argv=None) -> None:
                                         agent_temperature=args.agent_temperature)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
             or args.market is not None or args.scaffold or args.prefix is not None
-            or args.hide_reasoning or args.void_ties or args.hide_judge_feedback):
+            or args.hide_reasoning or args.void_ties or args.hide_judge_feedback
+            or args.absolute_profit):
         auction = {**config["auction"]}
         if args.common_cost:
             auction["common_cost"] = True
@@ -290,6 +296,8 @@ def main(argv=None) -> None:
             auction["void_ties"] = True
         if args.hide_judge_feedback:
             auction["hide_judge_feedback"] = True
+        if args.absolute_profit:
+            auction["absolute_profit"] = True
         config = {**config, "auction": auction}
     run_dir = run(condition=CONDITIONS[args.condition], seed=args.seed, rounds=args.rounds,
                   clients=clients, config=config, runs_root=args.runs_root,

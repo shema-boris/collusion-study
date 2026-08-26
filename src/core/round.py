@@ -63,6 +63,7 @@ def run_round(
     void_ties: bool = False,
     show_reasoning: bool = True,
     show_feedback: bool = True,
+    absolute_profit: bool = False,
 ) -> RoundRecord:
     """Run one auction round, append its record to ``state.history``, and return it."""
     cond: Condition = state.condition
@@ -79,25 +80,31 @@ def run_round(
     #    gives both agents the SAME cost (symmetric; removes the cost-asymmetry barrier, §coord).
     costs = draw_costs(state.seed, r, lo, hi, common=common_cost)
 
-    # 2. History view -- rendered per condition (leak prevention, DESIGN.md §7).
-    if cond.use_history and state.history:
-        renderer = (informed_renderer(feedback_params, show_reasoning, show_feedback)
+    # 2. History view -- rendered per condition (leak prevention, DESIGN.md §7). In absolute_profit
+    #    mode it is rendered PER AGENT (each sees only its own payoff/standings), so we build one
+    #    view per audience; otherwise a single shared view is reused for both.
+    def _render(audience):
+        renderer = (informed_renderer(feedback_params, show_reasoning, show_feedback, absolute_profit)
                     if cond.visibility is Visibility.INFORMED
-                    else blind_renderer(feedback_params, show_reasoning, show_feedback))
-        # Token-budget sliding window (fit the most recent rounds under the context budget);
-        # falls back to a fixed round-count window when no token budget is set.
+                    else blind_renderer(feedback_params, show_reasoning, show_feedback, absolute_profit))
         if max_context_tokens:
-            history_text = renderer.render_history_budget(
-                state.history, max_context_tokens, max_rounds=history_window)
+            return renderer.render_history_budget(
+                state.history, max_context_tokens, max_rounds=history_window, audience=audience)
+        return renderer.render_history(state.history, window=history_window, audience=audience)
+
+    if cond.use_history and state.history:
+        if absolute_profit:
+            history_by_agent = {a: _render(a) for a in (AgentId.A, AgentId.B)}
         else:
-            history_text = renderer.render_history(state.history, window=history_window)
+            shared = _render(None)
+            history_by_agent = {AgentId.A: shared, AgentId.B: shared}
     else:
-        history_text = ""
+        history_by_agent = {AgentId.A: "", AgentId.B: ""}
 
     # 3. Agents bid independently (never see each other's current bid).
     submissions = {
         a: agent_fn(agent_id=a, cost=costs[a], scenario=scenario,
-                    history_text=history_text, round_number=r)
+                    history_text=history_by_agent[a], round_number=r)
         for a in (AgentId.A, AgentId.B)
     }
 

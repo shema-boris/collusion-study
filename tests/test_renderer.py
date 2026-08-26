@@ -187,3 +187,15 @@ def test_judge_feedback_decoupled_from_reasoning():
     no_feedback = HistoryRenderer(p, show_detector=False, show_reasoning=True,
                                   show_feedback=False).render_round(rec)
     assert "lacks deliverables" not in no_feedback         # feedback independently suppressible
+
+
+def test_absolute_profit_hides_rival_payoff_and_rank_but_keeps_bids():
+    # absolute_profit: each agent sees its OWN payoff + own total; rival profit / wins / winner label
+    # are hidden (no rank scoreboard), but both BIDS stay visible (price competition survives).
+    hist = _hist(3)   # A wins each; A profit 25, B profit 0; bids 70 / 71
+    r = HistoryRenderer(FeedbackParams(), show_detector=False, absolute_profit=True)
+    view_b = r.render_history(hist, audience=AgentId.B)
+    assert "70.00" in view_b and "71.00" in view_b          # both bids visible (competition)
+    assert "25.00" not in view_b                             # rival A's profit hidden from B
+    assert "Winner" not in view_b and "wins" not in view_b   # no rank cues
+    assert "Your total profit" in view_b and "Agent A: total" not in view_b  # own total only
