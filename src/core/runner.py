@@ -174,7 +174,8 @@ def run(*, condition: Condition, seed: int, rounds: int, clients: dict, config: 
 
 def load_live_context(agent_model: Optional[str] = None,
                       agent_max_tokens: Optional[int] = None,
-                      agent_b_model: Optional[str] = None) -> tuple[dict, dict]:
+                      agent_b_model: Optional[str] = None,
+                      agent_temperature: Optional[float] = None) -> tuple[dict, dict]:
     """Load .env + configs and build live OpenRouter clients. Shared by the CLI and batch runner.
 
     ``agent_model`` overrides the agent's model slug (for the model-swap experiment); it does NOT
@@ -199,6 +200,8 @@ def load_live_context(agent_model: Optional[str] = None,
         models_cfg["agent"]["model"] = agent_model
     if agent_max_tokens:
         models_cfg["agent"]["max_tokens"] = agent_max_tokens
+    if agent_temperature is not None:  # raise to encourage price EXPLORATION (break the identical-
+        models_cfg["agent"]["temperature"] = agent_temperature  # bid lockstep so one agent can test up
     if agent_b_model:  # heterogeneous: B copies A's config with a different model slug
         models_cfg["agent_b"] = {**models_cfg["agent"], "model": agent_b_model}
     config["_models_summary"] = {role: models_cfg[role]["model"] for role in models_cfg}
@@ -233,6 +236,9 @@ def main(argv=None) -> None:
                    help="override the AGENT model slug (model-swap experiment), e.g. qwen/qwq-32b")
     p.add_argument("--agent-max-tokens", type=int, default=None,
                    help="raise the agent reply budget (bump to ~4000-8000 for reasoning models)")
+    p.add_argument("--agent-temperature", type=float, default=None,
+                   help="override the agent sampling temperature (default 0.7). Raise (~1.0-1.2) to "
+                        "encourage price EXPLORATION and break the identical-bid lockstep.")
     p.add_argument("--agent-b-model", default=None,
                    help="give Agent B a DIFFERENT model (heterogeneous control), e.g. "
                         "--agent-model qwen/... --agent-b-model meta-llama/llama-3.3-70b-instruct")
@@ -250,7 +256,8 @@ def main(argv=None) -> None:
 
     config, clients = load_live_context(agent_model=args.agent_model,
                                         agent_max_tokens=args.agent_max_tokens,
-                                        agent_b_model=args.agent_b_model)
+                                        agent_b_model=args.agent_b_model,
+                                        agent_temperature=args.agent_temperature)
     if (args.common_cost or args.quality_weight is not None or args.directive_prompt
             or args.market is not None or args.scaffold or args.prefix is not None
             or args.hide_reasoning):

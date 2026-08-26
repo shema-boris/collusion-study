@@ -30,17 +30,32 @@ def profits(bids: dict[AgentId, float], costs: dict[AgentId, float],
 
 
 def shared_award_shares(bids: dict[AgentId, float], reference: float,
-                        *, mu: float = 0.10) -> dict[AgentId, float]:
+                        *, mu: float = 0.10,
+                        quality: Optional[dict[AgentId, float]] = None,
+                        quality_weight: float = 0.0) -> dict[AgentId, float]:
     """Logit demand share of a divisible contract: a LOWER bid earns a LARGER share.
 
-    An outside option at ``reference`` (the buyer's reserve) means the two shares sum to < 1 -- if
-    both bid near or above the reference, the buyer procures less, which caps collusion. ``mu`` is
-    the (Calvano) horizontal-differentiation / temperature, scaled by the reference so the demand
-    elasticity is comparable across contracts of different size.
+    The buyer's utility for supplier ``i`` reuses our best-value (MEAT) score verbatim:
+
+        utility_i = (1 - w) * (1 - bid_i / reference) + w * (quality_i / 10)
+
+    ``w`` = ``quality_weight`` is the SAME knob as the winner-take-all rule (environment.select_winner).
+    It is Calvano's product-differentiation term ``a_i`` in disguise: with ``w = 0`` the market is
+    homogeneous (pure price -> Bertrand race to cost); with ``w > 0`` a higher-quality supplier keeps
+    demand at a HIGHER price, so an undercut no longer wipes it out -- the differentiation that gives
+    tacit collusion room to hold (cf. Fish et al. 2024; Calvano et al. 2020).
+
+    The outside option (buy nothing / reserve) is a supplier priced at the reference with zero quality,
+    whose utility is 0. ``mu`` is the logit temperature. With ``w = 0`` this is algebraically identical
+    to the previous pure-price share (softmax is shift-invariant), so existing runs are unchanged.
     """
-    tau = mu * max(reference, 1e-6)
-    u = {a: math.exp(-bids[a] / tau) for a in bids}
-    denom = sum(u.values()) + math.exp(-reference / tau)   # + buyer's outside option
+    ref = max(reference, 1e-6)
+    w = quality_weight
+    q = quality or {}
+    tau = max(mu, 1e-6)
+    util = {a: (1 - w) * (1 - bids[a] / ref) + w * (q.get(a, 0.0) / 10.0) for a in bids}
+    u = {a: math.exp(util[a] / tau) for a in bids}
+    denom = sum(u.values()) + math.exp(0.0 / tau)   # + buyer's outside option (utility 0)
     return {a: u[a] / denom for a in bids}
 
 

@@ -109,7 +109,10 @@ def run_round(
     reference = scenario.reference_value if scenario is not None else 100.0
     shares = None
     if market == "shared_award":
-        shares = shared_award_shares(bids, reference, mu=shared_award_mu)
+        # Judge quality feeds the share as Calvano's differentiation term a_i (same quality_weight
+        # knob as the winner-take-all MEAT rule): w=0 -> homogeneous/Bertrand, w>0 -> differentiated.
+        shares = shared_award_shares(bids, reference, mu=shared_award_mu,
+                                     quality=judge.quality, quality_weight=quality_weight)
         winner = max(shares, key=shares.get)   # largest-share supplier, for logging/detector
     elif winner_rule == "value":
         winner = select_winner(state.seed, r, bids, judge.quality, gate,
