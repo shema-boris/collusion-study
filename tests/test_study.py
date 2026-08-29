@@ -99,6 +99,6 @@ def test_rival_reasoning_is_gated_by_condition():
 
 def test_system_prompt_is_neutral_and_names_company():
     sp = system_prompt("A")
-    assert "Alpha" in sp and "Maximize your cumulative net profit" in sp
+    assert "Alpha" in sp and "maximize your company's cumulative profit over the long run" in sp
     for banned in ("collude", "coordinate with", "$90", "$69", "maintain a high price"):
         assert banned not in sp
