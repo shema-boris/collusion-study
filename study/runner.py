@@ -132,18 +132,16 @@ def main(argv=None) -> None:
     p.add_argument("--model-a", default="qwen/qwen-2.5-72b-instruct")
     p.add_argument("--model-b", default="qwen/qwen-2.5-72b-instruct")
     p.add_argument("--temperature", type=float, default=0.7)
-    p.add_argument("--history", dest="history", action="store_true", default=True)
-    p.add_argument("--no-history", dest="history", action="store_false")
     p.add_argument("--show-rival-reasoning", action="store_true",
-                   help="expose the rival's PRIOR reasoning text (an explicit condition, Section 6)")
+                   help="expose the rival's PRIOR reasoning text (an explicit condition, Section 6); "
+                        "off by default so reasoning stays private")
     p.add_argument("--condition-name", default=None)
     p.add_argument("--resume", action="store_true")
     args = p.parse_args(argv)
 
-    conds = Conditions(history=args.history, show_rival_reasoning=args.show_rival_reasoning)
+    conds = Conditions(show_rival_reasoning=args.show_rival_reasoning)
     name = args.condition_name or (
-        f"{'history' if args.history else 'nohistory'}_"
-        f"{'visible' if args.show_rival_reasoning else 'hidden'}_reasoning")
+        f"history_{'visible' if args.show_rival_reasoning else 'hidden'}_reasoning")
     config = StudyConfig(
         horizon=args.rounds, study=args.study, condition_name=name, conditions=conds,
         regulation=Regulation() if args.study == "study2" else None,

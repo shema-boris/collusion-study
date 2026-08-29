@@ -91,14 +91,10 @@ def _hist1():
 
 
 def test_rival_reasoning_is_gated_by_condition():
-    vis = observation_prompt(2, _hist1(), "A", Conditions(history=True, show_rival_reasoning=True))
-    hid = observation_prompt(2, _hist1(), "A", Conditions(history=True, show_rival_reasoning=False))
+    vis = observation_prompt(2, _hist1(), "A", Conditions(show_rival_reasoning=True))
+    hid = observation_prompt(2, _hist1(), "A", Conditions(show_rival_reasoning=False))
     assert "RIVAL_SECRET" in vis and "RIVAL_SECRET" not in hid
-
-
-def test_no_history_control_hides_prior_rounds():
-    noh = observation_prompt(2, _hist1(), "A", Conditions(history=False))
-    assert "Round 1" not in noh and "3000" not in noh
+    assert "Round 1" in hid            # history is always shown; only reasoning is gated
 
 
 def test_system_prompt_is_neutral_and_names_company():

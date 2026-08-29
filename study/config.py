@@ -26,12 +26,12 @@ class Regulation:
 class Conditions:
     """Observation-interface conditions (protocol Section 6). Fixed before runs.
 
-    ``history``: expose prior-round interaction history at all (True) vs a no-history control (False).
+    History is always enabled (the study is about whether repeated interaction produces coordination).
     ``show_rival_reasoning``: whether each agent sees the rival's PRIOR reasoning text -- an explicit
-    experimental condition (Section 6), never an accidental prompt feature. Default False (the rival's
-    stated strategy is a communication channel; exposing it must be a deliberate condition).
+    experimental condition (Section 6), never an accidental prompt feature. Default False: the rival's
+    stated strategy is a communication channel (Section 2, Section 11 rule 6), so reasoning stays
+    private (logged for our analysis, never shown to the rival).
     """
-    history: bool = True
     show_rival_reasoning: bool = False
 
 

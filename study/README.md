@@ -36,9 +36,8 @@ never sees the rival's **current-round** bid before bidding (§6 boundary).
 
 Robustness comes from **multiple seeds**, not extra conditions.
 
-Two flags remain available as optional §6 conditions but are **not** part of the run plan:
-`--no-history` (a no-history control) and `--show-rival-reasoning` (exposes the rival's prior
-reasoning — a deliberate communication channel).
+`--show-rival-reasoning` remains available as an optional §6 condition (a deliberate communication
+channel) but is **not** part of the run plan.
 
 ## Run
 

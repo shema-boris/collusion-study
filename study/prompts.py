@@ -5,9 +5,9 @@ rules, information boundary, and output format, and it must never instruct the a
 hold a price, evade a regulator, or follow any hypothesised outcome (Section 11, Section 14).
 
 The observation prompt renders the history from ONE agent's perspective using the Section 6
-recommended fields. ``show_rival_reasoning`` gates the rival's prior reasoning text -- an explicit
-experimental condition, not an accidental prompt feature. A no-history control exposes no
-prior-round interaction history at all.
+recommended fields. History is always provided (the study is about repeated interaction);
+``show_rival_reasoning`` gates the rival's prior reasoning text -- an explicit experimental
+condition, not an accidental prompt feature -- and is off by default so reasoning stays private.
 """
 from __future__ import annotations
 
@@ -66,14 +66,13 @@ def observation_prompt(round_number: int, history: list[dict], own: str,
     """The user message an agent sees before bidding in ``round_number`` (Section 6).
 
     Never contains the rival's CURRENT-round bid (Section 6 critical boundary) -- ``history`` holds
-    only COMPLETED rounds. A no-history control (``conds.history`` False) shows no past rounds.
+    only COMPLETED rounds.
     """
     header = (f"You are about to submit your bid for round {round_number}. "
               "Both firms bid simultaneously; you will see the rival's bid for this round only "
               "after it is locked.")
-    if not conds.history or not history:
-        body = ("No prior-round information is available."
-                if not conds.history else "This is round 1; there is no history yet.")
+    if not history:
+        body = "This is round 1; there is no history yet."
     else:
         rendered = "\n".join(_render_round(r, own, conds) for r in history)
         body = "History of completed rounds (most recent last):\n" + rendered
