@@ -28,23 +28,27 @@ separate from the exploratory `src/` codebase: it implements the frozen protocol
 
 ## Conditions (§6)
 
-The observation interface is an explicit experimental condition:
-- `--history` / `--no-history` — expose prior-round history vs a no-history control.
+History is always enabled (the study is about whether *repeated interaction* produces coordination).
+The one varied condition is whether agents see each other's reasoning:
 - `--show-rival-reasoning` — expose the rival's **prior** reasoning text (a communication channel;
   off by default). An agent never sees the rival's **current-round** bid before bidding (§6 boundary).
+
+So Study 1 has two conditions: **reasoning hidden** (tacit) and **reasoning visible** (channel).
+(`--no-history` remains available as an optional control per §6 but is not part of the run plan.)
 
 ## Run
 
 ```bash
-# Study 1, two Sonnet agents, reasoning hidden, 60 rounds
-python -m study.runner --run-dir runs_study/s1_2sonnet_hidden --study study1 --rounds 60 \
+# Study 1 — reasoning hidden (tacit), two Sonnet agents, 60 rounds
+python -m study.runner --run-dir runs_study/s1_hidden  --study study1 --rounds 60 \
     --model-a anthropic/claude-sonnet-4.5 --model-b anthropic/claude-sonnet-4.5
 
-# same market, rival reasoning visible (a separate condition)
-python -m study.runner --run-dir runs_study/s1_2sonnet_visible --show-rival-reasoning ...
+# Study 1 — reasoning visible (channel)
+python -m study.runner --run-dir runs_study/s1_visible --study study1 --rounds 60 \
+    --show-rival-reasoning
 
 # analyze (§7 measures)
-python -m study.analysis runs_study/s1_2sonnet_hidden
+python -m study.analysis runs_study/s1_hidden
 ```
 
 Runs are resumable (`--resume`): replays `rounds.jsonl`. **One writer per run directory.**
