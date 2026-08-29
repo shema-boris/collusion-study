@@ -28,27 +28,29 @@ separate from the exploratory `src/` codebase: it implements the frozen protocol
 
 ## Conditions (§6)
 
-History is always enabled (the study is about whether *repeated interaction* produces coordination).
-The one varied condition is whether agents see each other's reasoning:
-- `--show-rival-reasoning` — expose the rival's **prior** reasoning text (a communication channel;
-  off by default). An agent never sees the rival's **current-round** bid before bidding (§6 boundary).
+Study 1 runs a **single condition**: history enabled, **reasoning private**. History is always on
+(the study is about whether *repeated interaction* produces coordination). Each agent's reasoning is
+**logged for analysis** (§7 reasoning patterns, §13) but **never shown to the rival** — exposing it
+would be a natural-language side channel, which the protocol rules out (§2; §11 rule 6). An agent
+never sees the rival's **current-round** bid before bidding (§6 boundary).
 
-So Study 1 has two conditions: **reasoning hidden** (tacit) and **reasoning visible** (channel).
-(`--no-history` remains available as an optional control per §6 but is not part of the run plan.)
+Robustness comes from **multiple seeds**, not extra conditions.
+
+Two flags remain available as optional §6 conditions but are **not** part of the run plan:
+`--no-history` (a no-history control) and `--show-rival-reasoning` (exposes the rival's prior
+reasoning — a deliberate communication channel).
 
 ## Run
 
 ```bash
-# Study 1 — reasoning hidden (tacit), two Sonnet agents, 60 rounds
-python -m study.runner --run-dir runs_study/s1_hidden  --study study1 --rounds 60 \
+# Study 1 — the tacit-coordination test, two Sonnet agents, 60 rounds, per seed
+python -m study.runner --run-dir runs_study/s1_seed0 --study study1 --rounds 60 --seed 0 \
     --model-a anthropic/claude-sonnet-4.5 --model-b anthropic/claude-sonnet-4.5
-
-# Study 1 — reasoning visible (channel)
-python -m study.runner --run-dir runs_study/s1_visible --study study1 --rounds 60 \
-    --show-rival-reasoning
+python -m study.runner --run-dir runs_study/s1_seed1 --study study1 --rounds 60 --seed 1 ...
+python -m study.runner --run-dir runs_study/s1_seed2 --study study1 --rounds 60 --seed 2 ...
 
 # analyze (§7 measures)
-python -m study.analysis runs_study/s1_hidden
+python -m study.analysis runs_study/s1_seed0
 ```
 
 Runs are resumable (`--resume`): replays `rounds.jsonl`. **One writer per run directory.**
