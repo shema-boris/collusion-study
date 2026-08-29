@@ -51,8 +51,9 @@ class StudyConfig:
     regulation: Optional[Regulation] = None    # None in Study 1; set only in Study 2
 
     # --- agents / decoding ---
-    model_a: str = "anthropic/claude-sonnet-4.5"
-    model_b: str = "anthropic/claude-sonnet-4.5"
+    # Default to Qwen-72B: much cheaper for iteration (a first cost-effective check before Sonnet).
+    model_a: str = "qwen/qwen-2.5-72b-instruct"
+    model_b: str = "qwen/qwen-2.5-72b-instruct"
     temperature: float = 0.7
     max_tokens: int = 1200
     seed: int = 0

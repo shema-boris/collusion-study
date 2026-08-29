@@ -42,15 +42,17 @@ reasoning — a deliberate communication channel).
 
 ## Run
 
+Default agent model is **Qwen-2.5-72B** (cheap first check); swap to Sonnet later with
+`--model-a anthropic/claude-sonnet-4.5 --model-b anthropic/claude-sonnet-4.5`.
+
 ```bash
-# Study 1 — the tacit-coordination test, two Sonnet agents, 60 rounds, per seed
-python -m study.runner --run-dir runs_study/s1_seed0 --study study1 --rounds 60 --seed 0 \
-    --model-a anthropic/claude-sonnet-4.5 --model-b anthropic/claude-sonnet-4.5
-python -m study.runner --run-dir runs_study/s1_seed1 --study study1 --rounds 60 --seed 1 ...
-python -m study.runner --run-dir runs_study/s1_seed2 --study study1 --rounds 60 --seed 2 ...
+# Study 1 — the tacit-coordination test, two Qwen-72B agents, 60 rounds, per seed
+python -m study.runner --run-dir runs_study/s1_qwen_seed0 --study study1 --rounds 60 --seed 0
+python -m study.runner --run-dir runs_study/s1_qwen_seed1 --study study1 --rounds 60 --seed 1
+python -m study.runner --run-dir runs_study/s1_qwen_seed2 --study study1 --rounds 60 --seed 2
 
 # analyze (§7 measures)
-python -m study.analysis runs_study/s1_seed0
+python -m study.analysis runs_study/s1_qwen_seed0
 ```
 
 Runs are resumable (`--resume`): replays `rounds.jsonl`. **One writer per run directory.**
