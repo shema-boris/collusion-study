@@ -12,11 +12,26 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Optional
 
-try:
-    from dotenv import load_dotenv
-    load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-except ImportError:
-    pass
+def _load_env() -> None:
+    """Load .env into os.environ. Uses python-dotenv if present, else a minimal parser -- so the
+    key loads even in a venv that lacks python-dotenv (which otherwise causes a 401 'Missing
+    Authentication header' because OPENROUTER_API_KEY never reaches the client)."""
+    import os
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(env_path)
+    except ImportError:
+        pass
+    if not os.environ.get("OPENROUTER_API_KEY") and env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_env()
 
 from study.agents import decide_bid, make_client
 from study.config import Conditions, Regulation, StudyConfig
