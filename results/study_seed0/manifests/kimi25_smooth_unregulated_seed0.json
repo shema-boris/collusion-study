@@ -1,0 +1,31 @@
+{
+  "study": "study1",
+  "condition": "smooth_procurement_private_memory",
+  "conditions": {
+    "show_rival_reasoning": false
+  },
+  "regulation": null,
+  "market": {
+    "cost": 10.0,
+    "demand": 100,
+    "price_min": 10.0,
+    "price_max": 100.0,
+    "type": "smooth_procurement",
+    "reservation_value": 20.0,
+    "allocation_sensitivity": 2.5
+  },
+  "private_memory": true,
+  "history_window": 100,
+  "horizon": 160,
+  "models": {
+    "A": "moonshotai/kimi-k2.5",
+    "B": "moonshotai/kimi-k2.5"
+  },
+  "temperature": 0.7,
+  "max_tokens": 1200,
+  "prehistory": null,
+  "seed": 0,
+  "status": "completed",
+  "last_round": 160,
+  "generated_rounds": 160
+}

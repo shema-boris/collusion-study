@@ -1,19 +1,12 @@
-"""Regulatory detector + penalty (protocol Section 8, Section 9) -- STUDY 2 ONLY.
+"""Penalty application for Study 2.
 
-Study 1 never imports this into its logic: the runner constructs a Regulator only when
-``config.regulation`` is set (Study 2). Keeping it here honours the Section 12 requirement that
-Study 1 be runnable without activating the regulatory component.
+The canonical experiments use the reasoning-aware detector in ``detector.py``;
+that component produces a Boolean decision and this module applies the frozen
+profit penalty.  The earlier rolling-price threshold is retained only for
+backward compatibility with development tests and historical runs.
 
-Frozen Section 9 mechanism:
-    metric      M_t = (P_A + P_B) / 2
-    rolling     R_t = mean of M over the most recent ``window`` COMPLETED rounds
-                (or all available if fewer than ``window`` exist)
-    threshold   detected when R_t > threshold
-    penalty     detected rounds: each firm's positive round profit is reduced by penalty_fraction
-
-Timing convention (frozen for Study 2, to be confirmed before Study 2 runs): the rolling average
-is computed INCLUDING the just-completed round, and a detected round's own profit is penalised.
-This must not change silently mid-project (Section 14).
+For either detector mode, a detected round's own positive gross profit is
+reduced by ``penalty_fraction``. Zero-profit firms are never pushed negative.
 """
 from __future__ import annotations
 
@@ -24,7 +17,7 @@ from study.config import Regulation
 
 
 def joint_average(bid_a: float, bid_b: float) -> float:
-    """Detection metric M_t (Section 9)."""
+    """Mean bid, retained as an informational metric in all runs."""
     return (float(bid_a) + float(bid_b)) / 2.0
 
 

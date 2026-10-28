@@ -1,0 +1,128 @@
+# Canonical seed-0 runs used in the mentor report and paper-development dataset.
+# `comparison_rounds` freezes the matched analysis horizon.  The Kimi smooth
+# baseline continued to 160 rounds, but only its first 100 enter comparisons.
+runs:
+  - id: qwen25_wta_unregulated_seed0
+    model_family: Qwen 2.5 72B
+    treatment: unregulated
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/s1_qwen25_wta_p1_memory_seed0
+  - id: qwen25_smooth_unregulated_seed0
+    model_family: Qwen 2.5 72B
+    treatment: unregulated
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/s1_qwen25_smooth_p1_memory_seed0
+  - id: qwen25_wta_regulated_seed0
+    model_family: Qwen 2.5 72B
+    treatment: reasoning_detector_penalty50
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/study2/qwen25/winner_take_all/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+  - id: qwen25_smooth_regulated_seed0
+    model_family: Qwen 2.5 72B
+    treatment: reasoning_detector_penalty50
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/study2/qwen25/smooth_procurement/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+
+  - id: kimi25_wta_unregulated_seed0
+    model_family: Kimi K2.5
+    treatment: unregulated
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/s1_kimi25_wta_p1_memory_seed0
+  - id: kimi25_smooth_unregulated_seed0
+    model_family: Kimi K2.5
+    treatment: unregulated
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/s1_kimi25_smooth_p1_memory_seed0
+  - id: kimi25_wta_regulated_seed0
+    model_family: Kimi K2.5
+    treatment: reasoning_detector_penalty50
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/study2/kimi25/winner_take_all/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+  - id: kimi25_smooth_regulated_seed0
+    model_family: Kimi K2.5
+    treatment: reasoning_detector_penalty50
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/study2/kimi25/smooth_procurement/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+
+  - id: deepseek_v32_wta_unregulated_seed0
+    model_family: DeepSeek V3.2
+    treatment: unregulated
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/s1_deepseek_v32_wta_p1_memory_seed0
+  - id: deepseek_v32_smooth_unregulated_seed0
+    model_family: DeepSeek V3.2
+    treatment: unregulated
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/s1_deepseek_v32_smooth_p1_memory_seed0
+  - id: deepseek_v32_wta_regulated_seed0
+    model_family: DeepSeek V3.2
+    treatment: reasoning_detector_penalty50
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/study2/deepseek_v32/winner_take_all/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+  - id: deepseek_v32_smooth_regulated_seed0
+    model_family: DeepSeek V3.2
+    treatment: reasoning_detector_penalty50
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/study2/deepseek_v32/smooth_procurement/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+
+  - id: gpt52_wta_unregulated_seed0
+    model_family: GPT-5.2
+    treatment: unregulated
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/s1_gpt52_wta_p1_memory_max4000_seed0
+  - id: gpt52_smooth_unregulated_seed0
+    model_family: GPT-5.2
+    treatment: unregulated
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/s1_gpt52_smooth_p1_memory_max4000_seed0
+  - id: gpt52_wta_regulated_seed0
+    model_family: GPT-5.2
+    treatment: reasoning_detector_penalty50
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/study2/gpt52/winner_take_all/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+  - id: gpt52_smooth_regulated_seed0
+    model_family: GPT-5.2
+    treatment: reasoning_detector_penalty50
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/study2/gpt52/smooth_procurement/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+
+  - id: claude_sonnet46_wta_unregulated_seed0
+    model_family: Claude Sonnet 4.6
+    treatment: unregulated
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/s1_claude_sonnet46_wta_p1_memory_seed0
+  - id: claude_sonnet46_smooth_unregulated_seed0
+    model_family: Claude Sonnet 4.6
+    treatment: unregulated
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/s1_claude_sonnet46_smooth_p1_memory_seed0
+  - id: claude_sonnet46_wta_regulated_seed0
+    model_family: Claude Sonnet 4.6
+    treatment: reasoning_detector_penalty50
+    market: winner_take_all
+    comparison_rounds: 100
+    run_dir: runs_study/study2/claude_sonnet46/winner_take_all/p1_memory_detector_gpt52_rubricv2_penalty50/seed0
+  - id: claude_sonnet46_smooth_regulated_seed0
+    model_family: Claude Sonnet 4.6
+    treatment: reasoning_detector_penalty50
+    market: smooth_procurement
+    comparison_rounds: 100
+    run_dir: runs_study/study2/claude_sonnet46/smooth_procurement/p1_memory_detector_gpt52_rubricv2_penalty50/seed0

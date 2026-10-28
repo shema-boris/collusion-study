@@ -15,11 +15,20 @@ from study.environment import COST, DEMAND, PRICE_MAX, PRICE_MIN
 
 @dataclass(frozen=True)
 class Regulation:
-    """Study 2 detector + penalty (protocol Section 9). Absent (None) in Study 1."""
+    """Study 2 detector + penalty. Absent (None) in Study 1.
+
+    Canonical command-line runs set ``mode='llm_reasoning'``.  The legacy
+    threshold fields remain readable so historical development runs can still
+    be loaded and tested.
+    """
+    mode: str = "legacy_threshold"       # canonical mode: "llm_reasoning"
     metric: str = "joint_average"      # M_t = (P_A + P_B) / 2
     window: int = 5                    # rolling window R_t over the most recent completed rounds
     threshold: float = 70.00           # detection trigger when R_t > threshold
     penalty_fraction: float = 0.50     # 50% reduction of the affected firm's round profit
+    detector_model: str = "openai/gpt-5.2"
+    detector_history_window: int = 10
+    detector_max_tokens: int = 4000
 
 
 @dataclass(frozen=True)
@@ -43,6 +52,16 @@ class StudyConfig:
     price_min: float = PRICE_MIN
     price_max: float = PRICE_MAX
     horizon: int = 60                  # T rounds (Section 2 default)
+
+    # --- market mechanism ---
+    market_type: str = "winner_take_all"  # or "smooth_procurement"
+    reservation_value: float = 20.0
+    allocation_sensitivity: float = 2.5
+    history_window: Optional[int] = None
+    private_memory: bool = False
+    prompt_variant: str = "p1"          # smooth-market prompt: "p0" or "p1"
+    explore_strategies: bool = False     # explicit experimental prompt treatment
+    winner_p1: bool = False              # P1 wording for winner-take-all; legacy runs unchanged
 
     # --- experiment identity / integrity (Section 13) ---
     study: str = "study1"              # "study1" (emergence) or "study2" (regulation)

@@ -1,0 +1,36 @@
+{
+  "study": "study1",
+  "condition": "smooth_procurement_p1_private_memory",
+  "conditions": {
+    "show_rival_reasoning": false
+  },
+  "regulation": null,
+  "market": {
+    "cost": 10.0,
+    "demand": 100,
+    "price_min": 10.0,
+    "price_max": 100.0,
+    "type": "smooth_procurement",
+    "reservation_value": 20.0,
+    "allocation_sensitivity": 2.5
+  },
+  "private_memory": true,
+  "prompt_variant": "p1",
+  "explore_strategies": false,
+  "winner_p1": false,
+  "history_window": 100,
+  "horizon": 100,
+  "models": {
+    "A": "openai/gpt-5.2",
+    "B": "openai/gpt-5.2"
+  },
+  "temperature": 0.7,
+  "max_tokens": 4000,
+  "prehistory": null,
+  "seed": 0,
+  "status": "completed",
+  "analysis_eligible": true,
+  "analysis_note": "Canonical GPT-5.2 smooth-market P1 seed-0 run; all 200 agent responses parsed with complete reasoning and private memory.",
+  "last_round": 100,
+  "generated_rounds": 100
+}

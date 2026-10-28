@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "canonical_run_config": "configs/canonical_study_runs.yaml",
+  "run_count": 20,
+  "recorded_round_count": 2060,
+  "matched_round_count": 2000,
+  "notes": [
+    "CSV files use UTF-8 with BOM for Excel compatibility.",
+    "all_rounds.csv includes full submitted reasoning, plans, and insights.",
+    "Rows beyond comparison_rounds are retained but marked outside the matched comparison.",
+    "Raw API transport logs are not included in this curated Git dataset."
+  ]
+}

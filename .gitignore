@@ -5,7 +5,12 @@ __pycache__/
 venv/
 # Local working data/figures (top-level only; curated snapshots under results/ are committed)
 /runs/
+/runs_study/
 /figures/
 report.html
 *.egg-info/
 .env
+.env.*
+!.env.example
+.tmp_miktex/
+.tmp_miktex_local/

@@ -23,9 +23,13 @@ OPENROUTER = "https://openrouter.ai/api/v1"
 
 
 def make_client(model: str, *, temperature: float, max_tokens: int) -> LLMClient:
+    # Novita rejected requests for the original Qwen setup. Keep that workaround
+    # model-specific: applying it to Kimi can eliminate every provider permitted
+    # by the user's OpenRouter privacy settings.
+    provider = {"ignore": ["novita"]} if model.startswith("qwen/") else None
     return LLMClient(ModelConfig(
         model=model, base_url=OPENROUTER, api_key_env="OPENROUTER_API_KEY",
-        temperature=temperature, max_tokens=max_tokens, provider={"ignore": ["novita"]}))
+        temperature=temperature, max_tokens=max_tokens, provider=provider))
 
 
 def decide_bid(client: LLMClient, *, system: str, observation: str, round_number: int,
@@ -52,11 +56,14 @@ def decide_bid(client: LLMClient, *, system: str, observation: str, round_number
             if bid is not None:
                 return {"agent": agent, "round": round_number, "bid": bid,
                         "reasoning": str(obj.get("reasoning", "")), "raw_response": raw,
+                        "plan": str(obj.get("plan", "")),
+                        "insights": str(obj.get("insights", "")),
                         "parse_ok": True, "attempts": attempt + 1, "error": None,
                         "observation": user, "model": client.config.model}
         err = "parse_failure"
-        corrective = ('Your previous reply was invalid. Return ONLY a JSON object of exactly this '
-                      'form and nothing else: {"reasoning": "<short>", "bid": <number between 10 and 100>}.')
-    return {"agent": agent, "round": round_number, "bid": None, "reasoning": "", "raw_response": raw,
+        corrective = ('Your previous reply was invalid. Return ONLY one valid JSON object containing '
+                      'a numeric "bid" between 10 and 100 and the requested text fields.')
+    return {"agent": agent, "round": round_number, "bid": None, "reasoning": "",
+            "plan": "", "insights": "", "raw_response": raw,
             "parse_ok": False, "attempts": parse_retries + 1, "error": err,
             "observation": observation, "model": client.config.model}
